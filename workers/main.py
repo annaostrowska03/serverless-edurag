@@ -2,13 +2,22 @@ import os
 import json
 import base64
 from flask import Flask, request
-from google.cloud import storage
+from google.cloud import storage, firestore
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_google_vertexai import VertexAIEmbeddings
 
 app = Flask(__name__)
-# Initialize the GCS client (it automatically picks up credentials in Cloud Run)
+
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-004")
+CHUNK_SIZE = int(os.environ.get("CHUNK_SIZE", 1000))
+CHUNK_OVERLAP = int(os.environ.get("CHUNK_OVERLAP", 100))
+FIRESTORE_COLLECTION = os.environ.get("FIRESTORE_COLLECTION", "documents")
+
+# Initialize the GCS and Firestore clients (they automatically pick up credentials in Cloud Run)
 storage_client = storage.Client()
+db = firestore.Client()
+embeddings_model = VertexAIEmbeddings(model_name=EMBEDDING_MODEL)
 
 @app.route('/', methods=['POST'])
 def process_document():
