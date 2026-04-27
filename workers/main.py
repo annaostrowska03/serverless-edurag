@@ -6,6 +6,8 @@ from google.cloud import storage, firestore
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_vertexai import VertexAIEmbeddings
+from langchain_chroma import Chroma
+import chromadb
 
 app = Flask(__name__)
 
@@ -13,11 +15,21 @@ EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-004")
 CHUNK_SIZE = int(os.environ.get("CHUNK_SIZE", 1000))
 CHUNK_OVERLAP = int(os.environ.get("CHUNK_OVERLAP", 100))
 FIRESTORE_COLLECTION = os.environ.get("FIRESTORE_COLLECTION", "documents")
+CHROMA_HOST = os.environ.get("CHROMA_HOST", "chromadb-service")
+CHROMA_PORT = int(os.environ.get("CHROMA_PORT", 8000))
 
 # Initialize the GCS and Firestore clients (they automatically pick up credentials in Cloud Run)
 storage_client = storage.Client()
 db = firestore.Client()
 embeddings_model = VertexAIEmbeddings(model_name=EMBEDDING_MODEL)
+
+# Initialize ChromaDB remote client
+chroma_client = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
+vector_store = Chroma(
+    client=chroma_client,
+    collection_name="edurag_documents",
+    embedding_function=embeddings_model
+)
 
 @app.route('/', methods=['POST'])
 def process_document():
@@ -85,7 +97,9 @@ def process_document():
         print(f"Generated {len(embeddings)} embeddings using Vertex AI.")
 
         # Save to Vector DB
-        # TODO: Push vectors (embeddings) and metadata (chunks) to vector db
+        # Push chunks and vectors to ChromaDB
+        vector_store.add_documents(chunks)
+        print(f"Stored {len(chunks)} chunks in ChromaDB vector store.")
         
         doc_ref.update({"status": "Ready"})
 
