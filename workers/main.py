@@ -50,35 +50,53 @@ def process_document():
 
     print(f"Processing file: {file_name} from bucket: {bucket_name}")
 
-    # Download file from GCS
-    bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(file_name)
-    
-    tmp_file_path = f"/tmp/{os.path.basename(file_name)}"
-    blob.download_to_filename(tmp_file_path)
-    print(f"Successfully downloaded {file_name} to local temp storage.")
+    doc_id = file_name.replace("/", "_")
+    doc_ref = db.collection(FIRESTORE_COLLECTION).document(doc_id)
+    doc_ref.set({"status": "Downloading", "filename": file_name})
 
-    # Extract text and split into chunks using LangChain
-    loader = PyPDFLoader(tmp_file_path)
-    documents = loader.load()
-    
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000, 
-        chunk_overlap=100
-    )
-    chunks = text_splitter.split_documents(documents)
-    print(f"Split {file_name} into {len(chunks)} chunks.")
+    try:
+        # Download file from GCS
+        bucket = storage_client.bucket(bucket_name)
+        blob = bucket.blob(file_name)
+        
+        tmp_file_path = f"/tmp/{os.path.basename(file_name)}"
+        blob.download_to_filename(tmp_file_path)
+        print(f"Successfully downloaded {file_name} to local temp storage.")
+        
+        doc_ref.update({"status": "Chunking"})
 
-    # Vectorize using Vertex AI
-    # TODO: Initialize VertexAIEmbeddings(model_name="textembedding-gecko@latest")
-    # embeddings = [chunk.page_content for chunk in chunks] -> get vectors
+        # Extract text and split into chunks using LangChain
+        loader = PyPDFLoader(tmp_file_path)
+        documents = loader.load()
+        
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=CHUNK_SIZE, 
+            chunk_overlap=CHUNK_OVERLAP
+        )
+        chunks = text_splitter.split_documents(documents)
+        print(f"Split {file_name} into {len(chunks)} chunks.")
+        
+        doc_ref.update({"status": "Vectorizing", "total_chunks": len(chunks)})
 
-    # Save to Vector DB
-    # TODO: Push chunks and vectors to ChromaDB or Vertex AI Vector Search
+        # Vectorize using Vertex AI
+        # Generate embeddings for the chunks using the initialized model
+        texts = [chunk.page_content for chunk in chunks]
+        embeddings = embeddings_model.embed_documents(texts)
+        print(f"Generated {len(embeddings)} embeddings using Vertex AI.")
 
-    # Cleanup local file
-    if os.path.exists(tmp_file_path):
-        os.remove(tmp_file_path)
+        # Save to Vector DB
+        # TODO: Push vectors (embeddings) and metadata (chunks) to vector db
+        
+        doc_ref.update({"status": "Ready"})
+
+    except Exception as e:
+        print(f"Error processing document {file_name}: {str(e)}")
+        doc_ref.update({"status": "Failed", "error": str(e)})
+        return f"Error: {str(e)}", 500
+    finally:
+        # Cleanup local file
+        if os.path.exists(tmp_file_path):
+            os.remove(tmp_file_path)
 
     return 'OK', 200
 
