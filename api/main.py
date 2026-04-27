@@ -5,6 +5,8 @@ from flask_cors import CORS
 from google.cloud import storage
 from langchain_google_vertexai import VertexAIEmbeddings, ChatVertexAI
 from langchain.chains import LLMChain
+from langchain_chroma import Chroma
+import chromadb
 from prompts import get_rag_prompt_template
 
 app = Flask(__name__)
@@ -14,11 +16,22 @@ CORS(app) # Enable CORS for all routes, allowing the frontend to make requests
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-004")
 LLM_MODEL = os.environ.get("LLM_MODEL", "gemini-1.5-pro-preview-0409")
 UPLOAD_BUCKET_NAME = os.environ.get("UPLOAD_BUCKET", "edurag-raw-pdfs")
+CHROMA_HOST = os.environ.get("CHROMA_HOST", "chromadb-service")
+CHROMA_PORT = int(os.environ.get("CHROMA_PORT", 8000))
+TOP_K = int(os.environ.get("TOP_K", 3))
 
 # Initialize GCP Clients
 storage_client = storage.Client()
 embeddings_model = VertexAIEmbeddings(model_name=EMBEDDING_MODEL)
 llm = ChatVertexAI(model_name=LLM_MODEL, temperature=0.2)
+
+# Initialize ChromaDB remote client
+chroma_client = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
+vector_store = Chroma(
+    client=chroma_client,
+    collection_name="edurag_documents",
+    embedding_function=embeddings_model
+)
 
 # Load the RAG prompt template from the separate file
 prompt_template = get_rag_prompt_template()
@@ -37,10 +50,14 @@ def ask_question():
         return jsonify({"error": "Question is required"}), 400
 
     try:
-        # TODO: RAG Implementation - Step 1 & 2: Similarity Search
-
-        # Mocking retrieved context for now until Vector DB is fully wired up:
-        context = "EduRAG is a highly scalable, AI-powered knowledge base utilizing the Retrieval-Augmented Generation (RAG) architecture."
+        # Similarity Search using Chroma DB
+        docs = vector_store.similarity_search(question, k=TOP_K)
+        
+        if not docs:
+            context = "No relevant context found."
+        else:
+            # Combine the chunks into a unified context string
+            context = "\n\n---\n\n".join([doc.page_content for doc in docs])
 
         # 3. & 4. Build prompt with context and run LLM Generation using Gemini
         answer = llm_chain.run({"context": context, "question": question})
