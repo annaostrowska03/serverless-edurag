@@ -1,12 +1,202 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EduRAG - AI Knowledge Base</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="config.js"></script>
 </head>
-<body>
-    <h1>EduRAG Chat</h1>
-    <p>User interface under construction.</p>
+<body class="bg-slate-100 h-screen flex flex-col font-sans">
+    
+    <!-- Header -->
+    <header class="bg-blue-600 text-white p-4 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">EduRAG</h1>
+            <p class="text-sm opacity-80">Serverless AI Knowledge Base</p>
+        </div>
+    </header>
+
+    <main class="container mx-auto flex-grow flex flex-col md:flex-row gap-6 p-4 overflow-hidden">
+        
+        <!-- Left Panel: Upload & Status -->
+        <aside class="w-full md:w-1/3 bg-white rounded-lg shadow-sm p-6 flex flex-col">
+            <h2 class="text-xl font-semibold mb-4 text-slate-800">Document Upload</h2>
+            <p class="text-sm text-slate-500 mb-4">Upload PDFs directly to Cloud Storage for asynchronous processing.</p>
+            
+            <div class="border-2 border-dashed border-blue-300 rounded-lg p-4 text-center cursor-pointer hover:bg-blue-50 transition" id="drop-zone">
+                <input type="file" id="file-input" class="hidden" accept=".pdf">
+                <label for="file-input" class="cursor-pointer text-blue-600 font-medium">Browse Files</label>
+                <p class="text-xs text-slate-400 mt-2">Only PDF files supported</p>
+            </div>
+
+            <button onclick="uploadFile()" id="upload-btn" class="mt-4 bg-blue-600 text-white font-semibold py-2 rounded shadow hover:bg-blue-700 disabled:opacity-50" disabled>
+                Start Upload
+            </button>
+
+            <!-- Processing Status -->
+            <div class="mt-8 flex-grow">
+                <h3 class="font-medium text-slate-700 mb-2">Processing Status</h3>
+                <div id="status-box" class="text-sm space-y-2 p-3 bg-slate-50 rounded border border-slate-100 min-h-[100px]">
+                    <span class="text-slate-400 italic">No active jobs...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right Panel: Chat Interface -->
+        <section class="w-full md:w-2/3 bg-white rounded-lg shadow-sm flex flex-col">
+            <div class="p-4 border-b border-slate-100 bg-slate-50 rounded-t-lg">
+                <h2 class="text-xl font-semibold text-slate-800">Chat with your Data</h2>
+            </div>
+            
+            <!-- Chat History -->
+            <div id="chat-history" class="flex-grow p-4 overflow-y-auto space-y-4 bg-slate-50">
+                <!-- Welcoming message -->
+                <div class="flex items-start">
+                    <div class="bg-blue-600 text-white rounded-lg p-3 max-w-[80%] shadow-sm">
+                        Hello! I am EduRAG. Upload your textbook or manual, and then ask me anything about it!
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Input -->
+            <div class="p-4 border-t border-slate-100 bg-white rounded-b-lg flex gap-2">
+                <input type="text" id="question-input" class="flex-grow border border-slate-300 rounded-md p-2 focus:outline-none focus:border-blue-500" placeholder="Ask a question based on uploaded documents...">
+                <button id="ask-btn" class="bg-blue-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-blue-700 shadow">Send</button>
+            </div>
+        </section>
+    </main>
+
+    <script> is now loaded externally from config.js
+        const API_URL = CONFIG.API_URLloud Run API URL in production
+        const API_URL = "http://localhost:8080"; 
+
+        // ----------------------------------------------------
+        // UPLOAD PIPELINE
+        // ----------------------------------------------------
+        const fileInput = document.getElementById('file-input');
+        const uploadBtn = document.getElementById('upload-btn');
+        const statusBox = document.getElementById('status-box');
+        let selectedFile = null;
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                selectedFile = e.target.files[0];
+                uploadBtn.disabled = false;
+                uploadBtn.innerText = `Upload ${selectedFile.name}`;
+            }
+        });
+
+        async function uploadFile() {
+            if (!selectedFile) return;
+
+            try {
+                uploadBtn.disabled = true;
+                statusBox.innerHTML = '<span class="text-blue-600">Requesting Direct Upload URL...</span>';
+
+                // 1. Get Presigned URL from Backend API
+                const urlResponse = await fetch(`${API_URL}/generate-upload-url?filename=${encodeURIComponent(selectedFile.name)}`);
+                const urlData = await urlResponse.json();
+                
+                if (!urlResponse.ok) throw new Error(urlData.error || 'Failed to get upload URL');
+
+                statusBox.innerHTML = '<span class="text-blue-600">Uploading to Cloud Storage...</span>';
+
+                // 2. Upload file directly to Google Cloud Storage (bypassing backend)
+                const uploadResponse = await fetch(urlData.upload_url, {
+                    method: 'PUT',
+                    body: selectedFile,
+                    headers: {
+                        'Content-Type': 'application/pdf'
+                    }
+                });
+
+                if (!uploadResponse.ok) throw new Error('Failed to upload file to Cloud Storage');
+
+                statusBox.innerHTML = '<span class="text-green-600 font-medium">Upload Complete! 🚀</span><br/><span class="text-xs text-slate-500">Document ingestion pipeline (Cloud Run) started... Waiting for backend.</span>';
+                
+                // TODO: Listen to Firestore directly here to update UI when vectorization is "Ready"
+                
+            } catch (err) {
+                statusBox.innerHTML = `<span class="text-red-600">Error: ${err.message}</span>`;
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.innerText = "Start Upload";
+                fileInput.value = "";
+                selectedFile = null;
+            }
+        }
+
+        // ----------------------------------------------------
+        // CHAT INFERENCE PIPELINE
+        // ----------------------------------------------------
+        const chatHistory = document.getElementById('chat-history');
+        const questionInput = document.getElementById('question-input');
+        const askBtn = document.getElementById('ask-btn');
+
+        // Initial setup for buttons
+        askBtn.addEventListener('click', askQuestion);
+
+        // Allow sending message with 'Enter' key
+        questionInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') askQuestion();
+        });
+
+        function appendMessage(text, isUser) {
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex items-start ${isUser ? 'justify-end' : ''}`;
+            
+            const message = document.createElement('div');
+            message.className = `rounded-lg p-3 max-w-[80%] shadow-sm ${isUser ? 'bg-slate-200 text-slate-800' : 'bg-blue-600 text-white'}`;
+            message.innerText = text;
+            
+            wrapper.appendChild(message);
+            chatHistory.appendChild(wrapper);
+            chatHistory.scrollTop = chatHistory.scrollHeight; // Auto-scroll
+        }
+
+        async function askQuestion() {
+            const question = questionInput.value.trim();
+            if (!question) return;
+
+            // 1. Add user question to UI
+            appendMessage(question, true);
+            questionInput.value = "";
+            askBtn.disabled = true;
+
+            // Temporary loading indicator
+            const loadingId = 'loading-' + Date.now();
+            const wrapper = document.createElement('div');
+            wrapper.id = loadingId;
+            wrapper.className = "flex items-start";
+            wrapper.innerHTML = `<div class="bg-blue-600 text-white rounded-lg p-3 shadow-sm opacity-50">Thinking...</div>`;
+            chatHistory.appendChild(wrapper);
+
+            try {
+                // 2. Call API for Vertex AI generation
+                const response = await fetch(`${API_URL}/ask`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: question })
+                });
+
+                const data = await response.json();
+                const loaderEl = document.getElementById(loadingId);
+                if(loaderEl) loaderEl.remove();
+
+                if (!response.ok) throw new Error(data.error || 'Failed to get answer');
+
+                // 3. Add AI answer to UI
+                appendMessage(data.answer, false);
+            } catch (err) {
+                const loaderEl = document.getElementById(loadingId);
+                if(loaderEl) loaderEl.remove();
+                appendMessage(`Error: ${err.message}`, false);
+            } finally {
+                askBtn.disabled = false;
+                questionInput.focus();
+            }
+        }
+    </script>
 </body>
 </html>
