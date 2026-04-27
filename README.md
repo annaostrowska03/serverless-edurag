@@ -6,6 +6,7 @@ EduRAG allows users to upload massive volumes of textual data (gigabytes of text
 By leveraging a Serverless, event-driven architecture on Google Cloud Platform (GCP) and Firebase, uploaded documents are asynchronously parsed, chunked, and converted into embeddings in the background. Once processed, end-users can query the documents via a responsive UI, while the system dynamically retrieves the most relevant context to generate answers using Google's Vertex AI models.
 
 ## Architecture
+<img width="580" height="380" alt="image" src="https://github.com/user-attachments/assets/1b87662b-fd5f-4920-a8c6-cfec4caabcce" />
 
 The system is strictly divided into two decoupled workflows:
 
