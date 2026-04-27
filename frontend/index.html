@@ -67,13 +67,10 @@
         </section>
     </main>
 
-    <script> is now loaded externally from config.js
-        const API_URL = CONFIG.API_URLloud Run API URL in production
-        const API_URL = "http://localhost:8080"; 
+    <script>
+        const API_URL = CONFIG.API_URL
 
-        // ----------------------------------------------------
         // UPLOAD PIPELINE
-        // ----------------------------------------------------
         const fileInput = document.getElementById('file-input');
         const uploadBtn = document.getElementById('upload-btn');
         const statusBox = document.getElementById('status-box');
@@ -127,9 +124,7 @@
             }
         }
 
-        // ----------------------------------------------------
         // CHAT INFERENCE PIPELINE
-        // ----------------------------------------------------
         const chatHistory = document.getElementById('chat-history');
         const questionInput = document.getElementById('question-input');
         const askBtn = document.getElementById('ask-btn');
