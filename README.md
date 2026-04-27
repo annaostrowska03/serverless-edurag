@@ -33,6 +33,6 @@ The system is strictly divided into two decoupled workflows:
 
 ## Team
 
-* Anna Ostrowska 
-* Michał Kukla
-* Norbert Frydrysiak
+* [Anna Ostrowska](https://github.com/annaostrowska03)
+* [Michał Kukla](https://github.com/mickuk)
+* [Norbert Frydrysiak](https://github.com/fantasy2fry)
