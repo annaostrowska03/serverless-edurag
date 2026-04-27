@@ -8,6 +8,21 @@ from langchain.chains import LLMChain
 from prompts import get_rag_prompt_template
 
 app = Flask(__name__)
+CORS(app) # Enable CORS for all routes, allowing the frontend to make requests
+
+# Configuration loaded from environment variables
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-004")
+LLM_MODEL = os.environ.get("LLM_MODEL", "gemini-1.5-pro-preview-0409")
+UPLOAD_BUCKET_NAME = os.environ.get("UPLOAD_BUCKET", "edurag-raw-pdfs")
+
+# Initialize GCP Clients
+storage_client = storage.Client()
+embeddings_model = VertexAIEmbeddings(model_name=EMBEDDING_MODEL)
+llm = ChatVertexAI(model_name=LLM_MODEL, temperature=0.2)
+
+# Load the RAG prompt template from the separate file
+prompt_template = get_rag_prompt_template()
+llm_chain = LLMChain(llm=llm, prompt=prompt_template)
 
 @app.route('/ask', methods=['POST'])
 def ask_question():
@@ -21,13 +36,45 @@ def ask_question():
     if not question:
         return jsonify({"error": "Question is required"}), 400
 
-    # TODO: RAG Implementation
-    # 1. Convert question to vector
-    # 2. Query Vector DB for the most similar chunks
-    # 3. Build prompt with context for Vertex AI (Gemini)
-    # 4. Return the generated answer
+    try:
+        # TODO: RAG Implementation - Step 1 & 2: Similarity Search
 
-    return jsonify({"answer": f"Received question: '{question}'. RAG module under construction."})
+        # Mocking retrieved context for now until Vector DB is fully wired up:
+        context = "EduRAG is a highly scalable, AI-powered knowledge base utilizing the Retrieval-Augmented Generation (RAG) architecture."
+
+        # 3. & 4. Build prompt with context and run LLM Generation using Gemini
+        answer = llm_chain.run({"context": context, "question": question})
+
+        return jsonify({"answer": answer, "retrieved_context": context})
+
+    except Exception as e:
+        print(f"Error processing question: {str(e)}")
+        return jsonify({"error": "Failed to process the question.", "details": str(e)}), 500
+
+@app.route('/generate-upload-url', methods=['GET'])
+def generate_upload_url():
+    """
+    Generates a pre-signed URL allowing the frontend to upload a PDF directly
+    to Google Cloud Storage, bypassing the backend server entirely.
+    """
+    filename = request.args.get("filename")
+    if not filename:
+        return jsonify({"error": "Filename is required"}), 400
+
+    try:
+        bucket = storage_client.bucket(UPLOAD_BUCKET_NAME)
+        blob = bucket.blob(f"uploads/{filename}")
+
+        url = blob.generate_signed_url(
+            version="v4",
+            expiration=datetime.timedelta(minutes=15),
+            method="PUT",
+            content_type="application/pdf"
+        )
+        return jsonify({"upload_url": url, "filename": f"uploads/{filename}"})
+    except Exception as e:
+        print(f"Error generating presigned URL: {str(e)}")
+        return jsonify({"error": "Failed to generate URL", "details": str(e)}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
