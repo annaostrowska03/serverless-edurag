@@ -30,9 +30,13 @@ resource "google_cloud_run_v2_service" "api_service" {
         value = "text-embedding-004"
       }
       env {
-        name  = "LLM_MODEL"
-        value = "gemini-1.5-pro-preview-0409"
-      }
+      name  = "LLM_MODEL"
+      value = "gemini-3.1-flash-lite"
+    }
+	env {
+  name  = "GOOGLE_CLOUD_REGION"
+  value = "europe-west3"
+}
     }
   }
 
@@ -112,12 +116,12 @@ resource "google_project_iam_member" "cloud_run_sa_roles" {
     "roles/datastore.user",
     "roles/aiplatform.user",
     "roles/pubsub.subscriber",
+    "roles/iam.serviceAccountTokenCreator",
   ])
   project = var.project_id
   role    = each.key
   member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
 }
-
 # Artifact Registry - Docker image repository
 resource "google_artifact_registry_repository" "edurag_repo" {
   location      = var.region

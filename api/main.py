@@ -23,7 +23,8 @@ TOP_K = int(os.environ.get("TOP_K", 3))
 # Initialize GCP Clients
 storage_client = storage.Client()
 embeddings_model = VertexAIEmbeddings(model_name=EMBEDDING_MODEL)
-llm = ChatVertexAI(model_name=LLM_MODEL, temperature=0.2)
+VERTEX_REGION = os.environ.get("GOOGLE_CLOUD_REGION", "europe-west3")
+llm = ChatVertexAI(model_name=LLM_MODEL, temperature=0.2, location=VERTEX_REGION)
 
 # Initialize ChromaDB remote client
 chroma_client = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
@@ -70,15 +71,18 @@ def ask_question():
 
 @app.route('/generate-upload-url', methods=['GET'])
 def generate_upload_url():
-    """
-    Generates a pre-signed URL allowing the frontend to upload a PDF directly
-    to Google Cloud Storage, bypassing the backend server entirely.
-    """
     filename = request.args.get("filename")
     if not filename:
         return jsonify({"error": "Filename is required"}), 400
 
     try:
+        import google.auth
+        import google.auth.transport.requests as google_requests
+
+        credentials, _ = google.auth.default()
+        auth_request = google_requests.Request()
+        credentials.refresh(auth_request)
+
         bucket = storage_client.bucket(UPLOAD_BUCKET_NAME)
         blob = bucket.blob(f"uploads/{filename}")
 
@@ -86,7 +90,9 @@ def generate_upload_url():
             version="v4",
             expiration=datetime.timedelta(minutes=15),
             method="PUT",
-            content_type="application/pdf"
+            content_type="application/pdf",
+            service_account_email=credentials.service_account_email,
+            access_token=credentials.token,
         )
         return jsonify({"upload_url": url, "filename": f"uploads/{filename}"})
     except Exception as e:
