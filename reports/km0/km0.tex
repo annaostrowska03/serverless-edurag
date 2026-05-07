@@ -1,0 +1,105 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage{booktabs}
+
+\title{\textbf{EduRAG - Asynchronous AI Knowledge Base} \\ \large Milestone 0: Project Submission}
+\author{Anna Ostrowska, Michał Kukla, Norbert Frydrysiak}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Brief Description}
+EduRAG is a highly scalable, AI-powered knowledge base utilizing the Retrieval-Augmented Generation (RAG) architecture. The platform allows users to upload massive volumes of textual data, such as gigabytes of textbooks, manuals, or research papers. To ensure a large-scale assumption, the system decouples the responsive user interface from the data processing layer. 
+
+By leveraging a Serverless/PaaS event-driven architecture, uploaded documents are asynchronously read, chunked, and converted into embeddings in the background. Once processed, end-users can "chat" with the uploaded documents via a responsive UI, while the system dynamically retrieves the most relevant context to answer their queries.
+
+\section{Main Features}
+\begin{itemize}[label=\textbullet]
+    \item \textbf{Asynchronous Document Ingestion Pipeline:} Direct-to-storage uploads trigger event queues. Serverless background workers consume these events to perform heavy PDF parsing, text chunking, and embedding generation without blocking the frontend.
+    \item \textbf{Interactive Chat UI:} A fast, lightweight web interface where users can ask questions in natural language. The UI connects to an API that performs similarity searches and streams LLM-generated answers.
+    \item \textbf{Scalable Vector Storage:} The generated text embeddings and metadata are stored in a Vector Database optimized for semantic search.
+    \item \textbf{Real-Time Processing Status:} Users uploading large datasets can monitor the progress of the vectorization jobs via the dashboard.
+    \item \textbf{Infrastructure as Code (IaC):} All cloud resources, including storage buckets, serverless functions, API gateways, message queues, and databases, are fully provisioned and managed using Terraform.
+\end{itemize}
+
+\section{System Architecture \& Implementation Strategy}
+To fulfill the serverless and PaaS requirements, the system will be built using cloud services (e.g. AWS). The architecture is strictly divided into two decoupled workflows:
+
+\subsection{Workflow 1: Asynchronous Ingestion Pipeline (Heavy Load)}
+\begin{enumerate}
+    \item \textbf{Upload:} The frontend requests a pre-signed URL from the API and uploads a large PDF, completely bypassing the backend servers.
+    \item \textbf{Event Trigger:} A successful upload triggers a storage event, which drops a message into a Message Queue.
+    \item \textbf{Background Processing:} A Serverless Function consumes the message, downloads the PDF, and uses a library (like LangChain) to split the text into smaller, overlapping chunks.
+    \item \textbf{Vectorization \& Storage:} The function calls an Embedding API (e.g., OpenAI or HuggingFace) to convert text chunks into vectors, which are then stored in a Vector Database (e.g., ChromaDB).
+\end{enumerate}
+
+\subsection{Workflow 2: Real-time Inference Pipeline (Low Latency)}
+\begin{enumerate}
+    \item \textbf{Querying:} The user types a question in the UI. The request is routed via an API Gateway to a lightweight Serverless Function.
+    \item \textbf{Similarity Search:} The function converts the user's question into a vector and queries the Vector DB for the top-K most semantically similar text chunks.
+    \item \textbf{LLM Generation:} The retrieved chunks are injected into a prompt as context. The Large Language Model generates a final response based strictly on the provided context and streams it back to the UI.
+\end{enumerate}
+
+\section{Real-World Example}
+To demonstrate the platform's utility, consider a university onboarding scenario:
+\begin{itemize}[label=\textbullet]
+    \item \textbf{Context Upload:} A professor uploads a 50-page course syllabus and grading criteria (PDF).
+    \item \textbf{User Query:} A student asks the Chat UI: \textit{"What is the penalty for a late project submission?"}
+    \item \textbf{RAG Action:} The Vector DB instantly retrieves the specific paragraph about delays. The LLM formulates the answer: \textit{"According to the syllabus, an M1 delay costs 5 points per week, while an M2 delay incurs a 10-point penalty."}
+\end{itemize}
+
+\section{Roles of Typical Users}
+\begin{itemize}[label=\textbullet]
+    \item \textbf{Knowledge Contributor (Admin/Teacher):} Has the authorization to upload large documents, manage the knowledge base, and monitor the status of background vectorization jobs.
+    \item \textbf{End User (Student/Employee):} Interacts exclusively with the Chat UI. They can select a specific "knowledge context" (e.g., a specific textbook) and ask questions to retrieve summarized, AI-generated answers based solely on the uploaded files.
+\end{itemize}
+
+\section{Requirements Fulfillment}
+\begin{itemize}[label=\textbullet]
+    \item \textbf{UI:} A responsive web interface featuring a direct-to-cloud file upload portal with asynchronous progress tracking, alongside an interactive chat interface.
+    \item \textbf{Storage:} Multi-tiered storage strategy utilizing Object Storage (for raw PDFs) and a managed Vector Database (for embeddings and fast semantic search).
+    \item \textbf{Terraform:} All infrastructure (API Gateways, queues, serverless functions, storage buckets, and IAM roles) will be provisioned using Infrastructure as Code.
+    \item \textbf{Large Scale Assumption:} Direct storage uploads prevent network bottlenecks. Decoupling the ingestion pipeline via message queues ensures that sudden spikes in large document uploads do not degrade the performance of the Chat UI.
+    \item \textbf{PaaS / Serverless Preference:} The entire architecture relies on managed services (e.g., AWS).
+\end{itemize}
+
+\section{Team Roles \& Responsibilities}
+To ensure every team member engages with cloud technologies, the workload is divided by \textbf{Cloud Domains} rather than traditional software layers. Every member is responsible for writing the Terraform configuration for their respective cloud resources.
+
+\begin{enumerate}
+    \item \textbf{Cloud Storage \& Edge Architect:} Responsible for the cloud entry points. Manages the deployment of the Chat UI via Cloud Hosting, configures Object Storage for secure, direct-to-cloud document uploads, sets up the API Gateway, and writes the associated Terraform scripts.
+    \item \textbf{Asynchronous Compute \& Messaging Engineer:} Focuses on the event-driven core. Responsible for provisioning Message Queues, configuring Event Triggers, deploying the Serverless Background Workers that chunk the PDFs, and writing the associated Terraform scripts.
+    \item \textbf{Cloud Data \& ML Integration Lead:} Manages data persistence and AI services. Responsible for provisioning the managed Vector Database, configuring NoSQL tables for background job metadata, integrating LLM APIs, and writing the associated Terraform scripts.
+\end{enumerate}
+
+\section{Project Schedule}
+The project follows the official course milestones, with internal deadlines set to ensure timely delivery and testing.
+
+\vspace{0.5cm}
+\noindent
+\begin{tabularx}{\textwidth}{@{} l l X @{}}
+\toprule
+\textbf{Date} & \textbf{Phase} & \textbf{Tasks \& Milestones} \\
+\midrule
+\textbf{Apr 17, 2026} & \textbf{M0} & \textbf{Project Submission:} Submit this document outlining project idea. \\
+\addlinespace
+Apr 18 -- 26 & Design & Draw microservices diagram, define API contracts (REST), and write initial Terraform for storage. \\
+\addlinespace
+\textbf{Apr 27, 2026} & \textbf{M1} & \textbf{Document \& Plan Presentation:} Present microservices, storage logic, and working Terraform. \\
+\addlinespace
+May 01 -- 22 & Build & Develop Serverless workers, integrate LLM API, connect Frontend, and test the event queue. \\
+\addlinespace
+May 23 -- Jun 02 & Scale Test & Perform load testing with massive PDFs to validate the "large scale assumption" and tune queues. \\
+\addlinespace
+\textbf{Jun 03, 2026} & \textbf{M2} & \textbf{Final Presentation:} Live demo of the asynchronous uploading and real-time chat processing. \\
+\bottomrule
+\end{tabularx}
+
+\end{document}

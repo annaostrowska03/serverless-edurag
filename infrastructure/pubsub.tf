@@ -8,10 +8,11 @@ resource "google_pubsub_subscription" "pdf_uploads_sub" {
   name  = "pdf-uploads-subscription"
   topic = google_pubsub_topic.pdf_uploads_topic.name
 
-  # Worker (Cloud Run) will operate in Push model
-  # push_config {
-  #   push_endpoint = "https://OUR_CLOUD_RUN_URL/"
-  # }
+  push_config {
+    push_endpoint = google_cloud_run_v2_service.worker_service.uri
+  }
+
+  ack_deadline_seconds = 600
 }
 
 # Permission for Cloud Storage to send messages to Pub/Sub
