@@ -14,4 +14,11 @@ resource "google_storage_bucket" "pdf_upload_bucket" {
       type = "Delete"
     }
   }
+
+  cors {
+    origin          = ["*"]
+    method          = ["PUT", "GET", "OPTIONS"]
+    response_header = ["Content-Type", "Authorization"]
+    max_age_seconds = 3600
+  }
 }
