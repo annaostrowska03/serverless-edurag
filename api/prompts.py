@@ -6,6 +6,7 @@ from langchain_core.prompts import (
 
 SYSTEM_PROMPT = """You are an AI assistant for the EduRAG knowledge base.
 Use the following context to answer the user's question. If you don't know the answer or the context doesn't contain it, say "I don't know based on the provided context".
+Each context block includes the user-visible document filename. When the user refers to a file by name, use that filename to identify the correct document.
 
 Context:
 {context}"""

@@ -127,10 +127,66 @@ def build_doc_ref(user_id, doc_id):
     return db.collection("users").document(user_id).collection("documents").document(doc_id)
 
 
+def normalize_reference_text(value):
+    return re.sub(r"[^a-z0-9]+", " ", (value or "").lower()).strip()
+
+
+def get_filename_aliases(filename):
+    if not filename:
+        return set()
+
+    aliases = {filename}
+    stem, _ext = os.path.splitext(filename)
+    if stem:
+        aliases.add(stem)
+
+    normalized_aliases = {
+        normalize_reference_text(alias)
+        for alias in aliases
+        if normalize_reference_text(alias)
+    }
+    return normalized_aliases
+
+
+def get_referenced_doc_ids(question, user_id, doc_ids):
+    normalized_question = normalize_reference_text(question)
+    if not normalized_question or not doc_ids:
+        return []
+
+    referenced_doc_ids = []
+    for doc_id in doc_ids:
+        doc_snap = build_doc_ref(user_id, doc_id).get()
+        if not doc_snap.exists:
+            continue
+
+        doc_data = doc_snap.to_dict() or {}
+        aliases = get_filename_aliases(doc_data.get("filename"))
+        storage_basename = os.path.basename(doc_data.get("storage_path", ""))
+        aliases.update(get_filename_aliases(storage_basename))
+
+        if any(alias and alias in normalized_question for alias in aliases):
+            referenced_doc_ids.append(doc_id)
+
+    return referenced_doc_ids
+
+
+def format_context_block(doc):
+    filename = doc.metadata.get("filename") or os.path.basename(doc.metadata.get("source", "Unknown"))
+    subject = doc.metadata.get("subject") or "General"
+    page = doc.metadata.get("page", 0) + 1
+    return (
+        f"Document filename: {filename}\n"
+        f"Subject: {subject}\n"
+        f"Page: {page}\n"
+        f"Content:\n{doc.page_content}"
+    )
+
+
 def retrieve_docs(question, user_id, doc_ids):
     if doc_ids:
+        candidate_doc_ids = get_referenced_doc_ids(question, user_id, doc_ids) or doc_ids
         ranked_matches = []
-        for doc_id in doc_ids:
+        for doc_id in candidate_doc_ids:
             matches = vector_store.similarity_search_with_score(
                 question,
                 k=TOP_K,
@@ -184,7 +240,7 @@ def ask_question():
             context = "No relevant context found in the selected documents."
             sources = []
         else:
-            context = "\n\n---\n\n".join(doc.page_content for doc in docs)
+            context = "\n\n---\n\n".join(format_context_block(doc) for doc in docs)
             seen = set()
             sources = []
             for doc in docs:
