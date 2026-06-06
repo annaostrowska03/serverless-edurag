@@ -203,6 +203,7 @@ let conversationHistory = [];
 let chatSessions = {};
 let activeChatId = null;
 let selectedFile = null;
+const MAX_STORED_CHAT_MESSAGES = 50;
 
 firebase.initializeApp(CONFIG.FIREBASE_CONFIG);
 const auth = firebase.auth();
@@ -390,7 +391,7 @@ function renderChatSessionList() {
 async function persistActiveChatSession() {
     if (!currentUser || !activeChatId) return;
 
-    const messages = conversationHistory.slice(-20);
+    const messages = conversationHistory.slice(-MAX_STORED_CHAT_MESSAGES);
     await getUserChatsCollection().doc(activeChatId).set(
         {
             title: getChatTitle(messages),
@@ -924,9 +925,6 @@ async function askQuestion() {
         if (fullText) {
             conversationHistory.push({ role: 'user', content: question });
             conversationHistory.push({ role: 'assistant', content: fullText });
-            if (conversationHistory.length > 6) {
-                conversationHistory = conversationHistory.slice(-6);
-            }
             await persistActiveChatSession();
         }
     } catch (err) {
