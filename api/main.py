@@ -29,8 +29,12 @@ CHROMA_PORT = int(os.environ.get("CHROMA_PORT", 8000))
 TOP_K = int(os.environ.get("TOP_K", 3))
 VERTEX_REGION = os.environ.get("GOOGLE_CLOUD_REGION", "europe-west3")
 
-storage_client = storage.Client()
-db = firestore.Client()
+GCP_PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT", "edurag-495620")
+FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "edurag-495620-14c58")
+
+storage_client = storage.Client(project=GCP_PROJECT_ID)
+db = firestore.Client(project=FIREBASE_PROJECT_ID)
+
 embeddings_model = VertexAIEmbeddings(model_name=EMBEDDING_MODEL)
 llm = ChatVertexAI(model_name=LLM_MODEL, temperature=0.2, location=VERTEX_REGION)
 
@@ -42,7 +46,7 @@ vector_store = Chroma(
 )
 
 firebase_admin.initialize_app(
-    options={"projectId": os.environ.get("GOOGLE_CLOUD_PROJECT", "edurag-495620")}
+    options={"projectId": FIREBASE_PROJECT_ID}
 )
 
 
@@ -210,8 +214,18 @@ def generate_upload_url():
         import google.auth
         import google.auth.transport.requests as google_requests
 
-        credentials, _ = google.auth.default()
-        google_requests.Request()(credentials)
+        credentials, _ = google.auth.default(
+            scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+        credentials.refresh(google_requests.Request())
+
+        service_account_email = (
+                os.environ.get("SIGNING_SERVICE_ACCOUNT_EMAIL")
+                or getattr(credentials, "service_account_email", None)
+        )
+
+        if not service_account_email or service_account_email == "default":
+            service_account_email = "edurag-cloud-run-sa@edurag-495620.iam.gserviceaccount.com"
 
         gcs_path = f"uploads/{user_id}/{subject}/{filename}"
         doc_id = gcs_path.replace("/", "_")
@@ -224,7 +238,7 @@ def generate_upload_url():
             expiration=datetime.timedelta(minutes=15),
             method="PUT",
             content_type="application/pdf",
-            service_account_email=credentials.service_account_email,
+            service_account_email=service_account_email,
             access_token=credentials.token,
         )
 

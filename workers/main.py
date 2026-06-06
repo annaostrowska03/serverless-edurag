@@ -18,8 +18,12 @@ CHUNK_OVERLAP = int(os.environ.get("CHUNK_OVERLAP", 100))
 CHROMA_HOST = os.environ.get("CHROMA_HOST", "chromadb-service")
 CHROMA_PORT = int(os.environ.get("CHROMA_PORT", 8000))
 
-storage_client = storage.Client()
-db = firestore.Client()
+GCP_PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT", "edurag-495620")
+FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "edurag-495620-14c58")
+
+storage_client = storage.Client(project=GCP_PROJECT_ID)
+db = firestore.Client(project=FIREBASE_PROJECT_ID)
+
 embeddings_model = VertexAIEmbeddings(model_name=EMBEDDING_MODEL)
 
 chroma_client = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
