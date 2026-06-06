@@ -45,11 +45,13 @@ def verify_token(req):
     """Returns user_id from Firebase ID token, or None if invalid."""
     auth_header = req.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
+        print("verify_token: missing or malformed Authorization header")
         return None
     try:
         decoded = firebase_auth.verify_id_token(auth_header[7:])
         return decoded["uid"]
-    except Exception:
+    except Exception as e:
+        print(f"verify_token FAILED: {type(e).__name__}: {e}")
         return None
 
 
