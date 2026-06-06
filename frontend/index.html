@@ -37,18 +37,18 @@
 <div id="login-screen" class="h-full flex items-center justify-center">
     <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm mx-4">
         <div class="text-center mb-6">
-            <div class="text-5xl mb-2">📚</div>
+            <div class="text-5xl mb-2"></div>
             <h1 class="text-3xl font-bold text-blue-600">EduRAG</h1>
             <p class="text-slate-400 text-sm mt-1">AI-powered knowledge base</p>
         </div>
 
         <!-- Tab switcher -->
         <div class="flex rounded-xl bg-slate-100 p-1 mb-5">
-            <button id="tab-signin" onclick="switchTab('signin')"
+            <button type="button" id="tab-signin" onclick="switchTab('signin')"
                     class="flex-1 text-sm font-semibold py-1.5 rounded-lg bg-white shadow-sm text-slate-800 transition">
                 Sign in
             </button>
-            <button id="tab-register" onclick="switchTab('register')"
+            <button type="button" id="tab-register" onclick="switchTab('register')"
                     class="flex-1 text-sm font-semibold py-1.5 rounded-lg text-slate-500 transition">
                 Register
             </button>
@@ -66,7 +66,7 @@
 
         <p id="auth-error" class="text-red-500 text-xs mt-2 hidden"></p>
 
-        <button id="auth-submit-btn" onclick="submitAuth()"
+        <button type="button" id="auth-submit-btn" onclick="submitAuth()"
                 class="mt-4 w-full bg-blue-600 text-white text-sm font-semibold py-2.5 rounded-xl
                        hover:bg-blue-700 transition shadow-sm">
             Sign in
@@ -100,7 +100,7 @@
     <!-- Header -->
     <header class="bg-blue-600 text-white px-5 py-3 shadow-md flex items-center justify-between flex-shrink-0">
         <div class="flex items-center gap-2">
-            <span class="text-xl">📚</span>
+            <span class="text-xl"></span>
             <h1 class="text-lg font-bold tracking-tight">EduRAG</h1>
             <span class="text-xs opacity-50 hidden sm:block ml-1">Serverless AI Knowledge Base</span>
         </div>
@@ -178,6 +178,14 @@
                           d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
                 <span id="selection-info">No documents selected — select from the left panel</span>
+                <button onclick="clearChat()"
+                        class="ml-auto text-slate-300 hover:text-slate-500 transition flex-shrink-0"
+                        title="Clear chat">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                </button>
             </div>
 
             <!-- Chat history -->
@@ -210,20 +218,21 @@
 <script>
 const API_URL = CONFIG.API_URL;
 
-firebase.initializeApp(CONFIG.FIREBASE_CONFIG);
-const auth      = firebase.auth();
-const firestoreDb = firebase.firestore();
-
+// Declare these at the top so they are never in the TDZ when any callback fires
+let currentTab           = 'signin';
 let currentUser          = null;
 let unsubscribeDocListener = null;
-let userDocuments        = {};   // doc_id -> {...firestore fields}
+let userDocuments        = {};
 let selectedDocIds       = new Set();
+let conversationHistory  = [];
+
+firebase.initializeApp(CONFIG.FIREBASE_CONFIG);
+const auth        = firebase.auth();
+const firestoreDb = firebase.firestore();
 
 // ── Auth ──────────────────────────────────────────────────────────────────
 
 // ── Login screen logic ───────────────────────────────────────────────────
-
-let currentTab = 'signin';
 
 function switchTab(tab) {
     currentTab = tab;
@@ -406,21 +415,48 @@ function renderDocItem(doc) {
     const color = STATUS_COLOR[doc.status] || 'text-slate-400';
     const emoji = STATUS_EMOJI[doc.status] || '⏳';
     return `
-    <label class="flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50
-                  transition cursor-pointer ${!ready ? 'opacity-55' : ''}">
-        <input type="checkbox"
-               ${sel ? 'checked' : ''}
-               ${!ready ? 'disabled' : ''}
-               onchange="toggleDoc('${doc.id}', this.checked)"
-               class="mt-0.5 w-3.5 h-3.5 accent-blue-600 flex-shrink-0">
-        <div class="flex-1 min-w-0">
-            <div class="text-sm font-medium text-slate-700 truncate"
-                 title="${esc(doc.filename || doc.id)}">${esc(doc.filename || doc.id)}</div>
-            <div class="text-xs ${color} flex items-center gap-1">
-                ${emoji} ${doc.status}${doc.total_chunks ? ` · ${doc.total_chunks} chunks` : ''}
+    <div class="flex items-start gap-1 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition group ${!ready ? 'opacity-55' : ''}">
+        <label class="flex items-start gap-2 flex-1 min-w-0 cursor-pointer">
+            <input type="checkbox"
+                   ${sel ? 'checked' : ''}
+                   ${!ready ? 'disabled' : ''}
+                   onchange="toggleDoc('${doc.id}', this.checked)"
+                   class="mt-0.5 w-3.5 h-3.5 accent-blue-600 flex-shrink-0">
+            <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-slate-700 truncate"
+                     title="${esc(doc.filename || doc.id)}">${esc(doc.filename || doc.id)}</div>
+                <div class="text-xs ${color} flex items-center gap-1">
+                    ${emoji} ${doc.status}${doc.total_chunks ? ` · ${doc.total_chunks} chunks` : ''}
+                </div>
             </div>
-        </div>
-    </label>`;
+        </label>
+        <button onclick="deleteDoc('${doc.id}')"
+                title="Delete document"
+                class="opacity-0 group-hover:opacity-100 transition text-slate-300 hover:text-red-400 flex-shrink-0 mt-0.5 p-0.5 rounded">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+        </button>
+    </div>`;
+}
+
+async function deleteDoc(docId) {
+    if (!confirm(`Delete this document? This cannot be undone.`)) return;
+    try {
+        const idToken = await currentUser.getIdToken();
+        const res = await fetch(`${API_URL}/documents/${encodeURIComponent(docId)}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${idToken}` },
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            alert(`Delete failed: ${err.error}`);
+        }
+        // Firestore listener will remove the card automatically
+    } catch (err) {
+        alert(`Delete failed: ${err.message}`);
+    }
 }
 
 // ── Selection helpers ─────────────────────────────────────────────────────
@@ -530,6 +566,17 @@ questionInput.addEventListener('keypress', e => { if (e.key === 'Enter') askQues
 
 marked.setOptions({ breaks: true });
 
+function clearChat() {
+    conversationHistory = [];
+    chatHistory.innerHTML = `
+        <div class="flex items-start">
+            <div class="bg-blue-600 text-white rounded-2xl rounded-tl-sm px-4 py-3
+                        max-w-[85%] shadow-sm text-sm leading-relaxed">
+                Hello! I'm EduRAG. Select documents from the left panel, then ask me anything about them.
+            </div>
+        </div>`;
+}
+
 function esc(text) {
     if (!text) return '';
     return String(text)
@@ -550,10 +597,35 @@ function appendUserMessage(text) {
 
 function createAiBubble() {
     const wrap = document.createElement('div');
-    wrap.className = 'flex items-start';
+    wrap.className = 'flex items-start gap-2 group';
+
     const msg = document.createElement('div');
     msg.className = 'bg-blue-600 text-white rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%] shadow-sm text-sm leading-relaxed ai-bubble';
+
+    // Copy button — appears on hover next to the bubble
+    const copyBtn = document.createElement('button');
+    copyBtn.title = 'Copy';
+    copyBtn.className = 'opacity-0 group-hover:opacity-100 transition self-start mt-1 text-slate-300 hover:text-blue-500 flex-shrink-0';
+    copyBtn.innerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+    </svg>`;
+    copyBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(msg.innerText).then(() => {
+            copyBtn.innerHTML = `<svg class="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>`;
+            setTimeout(() => {
+                copyBtn.innerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                </svg>`;
+            }, 1500);
+        });
+    });
+
     wrap.appendChild(msg);
+    wrap.appendChild(copyBtn);
     chatHistory.appendChild(wrap);
     chatHistory.scrollTop = chatHistory.scrollHeight;
     return msg;
@@ -615,7 +687,11 @@ async function askQuestion() {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${idToken}`,
             },
-            body: JSON.stringify({ question, doc_ids: [...selectedDocIds] }),
+            body: JSON.stringify({
+                question,
+                doc_ids: [...selectedDocIds],
+                history: conversationHistory,
+            }),
         });
 
         if (!response.ok) {
@@ -635,7 +711,7 @@ async function askQuestion() {
             if (done) break;
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n');
-            buffer = lines.pop();           // keep incomplete line
+            buffer = lines.pop();
 
             for (const line of lines) {
                 if (!line.startsWith('data: ')) continue;
@@ -654,6 +730,13 @@ async function askQuestion() {
                     }
                 } catch { /* malformed chunk — skip */ }
             }
+        }
+
+        // Save to history for next turn (keep last 6 messages = 3 turns)
+        if (fullText) {
+            conversationHistory.push({ role: 'user', content: question });
+            conversationHistory.push({ role: 'assistant', content: fullText });
+            if (conversationHistory.length > 6) conversationHistory = conversationHistory.slice(-6);
         }
     } catch (err) {
         bubble.innerHTML = `<span class="opacity-80">Error: ${esc(err.message)}</span>`;
