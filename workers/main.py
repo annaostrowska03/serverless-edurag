@@ -1,13 +1,14 @@
-import os
-import json
 import base64
-from flask import Flask, request
-from google.cloud import storage, firestore
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_google_vertexai import VertexAIEmbeddings
-from langchain_chroma import Chroma
+import json
+import os
+
 import chromadb
+from flask import Flask, request
+from google.cloud import firestore, storage
+from langchain_chroma import Chroma
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_google_vertexai import VertexAIEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 app = Flask(__name__)
 
@@ -25,15 +26,23 @@ chroma_client = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
 vector_store = Chroma(
     client=chroma_client,
     collection_name="edurag_documents",
-    embedding_function=embeddings_model
+    embedding_function=embeddings_model,
 )
 
 
 def get_doc_ref(user_id, doc_id):
-    """Returns the Firestore document reference based on whether it's user-scoped or legacy."""
     if user_id and user_id != "legacy":
         return db.collection("users").document(user_id).collection("documents").document(doc_id)
     return db.collection("documents").document(doc_id)
+
+
+def parse_storage_path(file_name):
+    parts = file_name.split("/")
+    if len(parts) >= 4 and parts[0] == "uploads":
+        return parts[1], parts[2], "/".join(parts[3:])
+    if len(parts) >= 2 and parts[0] == "uploads":
+        return "legacy", "General", os.path.basename(file_name)
+    return "legacy", "General", os.path.basename(file_name)
 
 
 @app.route("/", methods=["POST"])
@@ -49,8 +58,8 @@ def process_document():
     try:
         data = base64.b64decode(pubsub_message["data"]).decode("utf-8")
         event_payload = json.loads(data)
-    except Exception as e:
-        return f"Error decoding message: {e}", 400
+    except Exception as exc:
+        return f"Error decoding message: {exc}", 400
 
     bucket_name = event_payload.get("bucket")
     file_name = event_payload.get("name")
@@ -61,30 +70,20 @@ def process_document():
     print(f"Processing: gs://{bucket_name}/{file_name}")
 
     doc_id = file_name.replace("/", "_")
-
-    # Parse path: uploads/{user_id}/{subject}/{filename}
-    # Falls back gracefully for legacy paths: uploads/{filename}
-    parts = file_name.split("/")
-    if len(parts) >= 4 and parts[0] == "uploads":
-        user_id = parts[1]
-        subject = parts[2]
-        original_filename = "/".join(parts[3:])
-    elif len(parts) >= 2 and parts[0] == "uploads":
-        user_id = "legacy"
-        subject = "General"
-        original_filename = os.path.basename(file_name)
-    else:
-        user_id = "legacy"
-        subject = "General"
-        original_filename = os.path.basename(file_name)
-
+    user_id, subject, original_filename = parse_storage_path(file_name)
     doc_ref = get_doc_ref(user_id, doc_id)
-    doc_ref.set({
-        "status": "Downloading",
-        "filename": original_filename,
-        "subject": subject,
-        "user_id": user_id,
-    }, merge=True)
+    existing = doc_ref.get()
+    display_filename = existing.to_dict().get("filename") if existing.exists else original_filename
+    doc_ref.set(
+        {
+            "status": "Downloading",
+            "filename": display_filename,
+            "subject": subject,
+            "user_id": user_id,
+            "storage_path": file_name,
+        },
+        merge=True,
+    )
 
     tmp_file_path = f"/tmp/{doc_id}"
 
@@ -101,17 +100,17 @@ def process_document():
 
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=CHUNK_SIZE,
-            chunk_overlap=CHUNK_OVERLAP
+            chunk_overlap=CHUNK_OVERLAP,
         )
         chunks = text_splitter.split_documents(documents)
         print(f"Split into {len(chunks)} chunks")
 
-        # Attach user/subject/doc metadata to every chunk so the API can filter
         for chunk in chunks:
             chunk.metadata["doc_id"] = doc_id
             chunk.metadata["user_id"] = user_id
             chunk.metadata["subject"] = subject
-            chunk.metadata["filename"] = original_filename
+            chunk.metadata["filename"] = display_filename
+            chunk.metadata["storage_path"] = file_name
 
         doc_ref.update({"status": "Vectorizing", "total_chunks": len(chunks)})
 
@@ -119,11 +118,10 @@ def process_document():
         print(f"Stored {len(chunks)} chunks in ChromaDB")
 
         doc_ref.update({"status": "Ready"})
-
-    except Exception as e:
-        print(f"Error processing {file_name}: {e}")
-        doc_ref.update({"status": "Failed", "error": str(e)})
-        return f"Error: {e}", 500
+    except Exception as exc:
+        print(f"Error processing {file_name}: {exc}")
+        doc_ref.update({"status": "Failed", "error": str(exc)})
+        return f"Error: {exc}", 500
     finally:
         if os.path.exists(tmp_file_path):
             os.remove(tmp_file_path)

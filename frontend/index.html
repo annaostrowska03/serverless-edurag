@@ -11,13 +11,12 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <style>
-        /* Markdown rendering inside AI bubbles */
         .ai-bubble p              { margin-bottom: 0.5rem; }
         .ai-bubble p:last-child   { margin-bottom: 0; }
         .ai-bubble strong         { font-weight: 700; }
         .ai-bubble em             { font-style: italic; }
-        .ai-bubble ul             { list-style-type: disc;     padding-left: 1.25rem; margin-bottom: 0.5rem; }
-        .ai-bubble ol             { list-style-type: decimal;  padding-left: 1.25rem; margin-bottom: 0.5rem; }
+        .ai-bubble ul             { list-style-type: disc; padding-left: 1.25rem; margin-bottom: 0.5rem; }
+        .ai-bubble ol             { list-style-type: decimal; padding-left: 1.25rem; margin-bottom: 0.5rem; }
         .ai-bubble li             { margin-bottom: 0.2rem; }
         .ai-bubble h1             { font-size: 1.2em; font-weight: 700; margin-bottom: 0.4rem; }
         .ai-bubble h2             { font-size: 1.1em; font-weight: 700; margin-bottom: 0.4rem; }
@@ -26,23 +25,19 @@
         .ai-bubble pre            { background: rgba(0,0,0,.25); border-radius: 6px; padding: .75rem; margin-bottom: .5rem; overflow-x: auto; }
         .ai-bubble pre code       { background: transparent; padding: 0; }
         .ai-bubble blockquote     { border-left: 3px solid rgba(255,255,255,.4); padding-left: .75rem; opacity: .85; margin-bottom: .5rem; }
-        /* Hide native <details> arrow */
         .src-toggle               { cursor: pointer; user-select: none; list-style: none; }
         .src-toggle::-webkit-details-marker { display: none; }
     </style>
 </head>
 <body class="bg-slate-100 font-sans overflow-hidden" style="height:100dvh">
 
-<!-- ═══════════════════════════════════════════════ LOGIN SCREEN ══ -->
 <div id="login-screen" class="h-full flex items-center justify-center">
     <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm mx-4">
         <div class="text-center mb-6">
-            <div class="text-5xl mb-2"></div>
             <h1 class="text-3xl font-bold text-blue-600">EduRAG</h1>
             <p class="text-slate-400 text-sm mt-1">AI-powered knowledge base</p>
         </div>
 
-        <!-- Tab switcher -->
         <div class="flex rounded-xl bg-slate-100 p-1 mb-5">
             <button type="button" id="tab-signin" onclick="switchTab('signin')"
                     class="flex-1 text-sm font-semibold py-1.5 rounded-lg bg-white shadow-sm text-slate-800 transition">
@@ -54,7 +49,6 @@
             </button>
         </div>
 
-        <!-- Shared fields -->
         <div class="space-y-3">
             <input type="text" id="auth-name" placeholder="Username"
                    class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm
@@ -72,14 +66,12 @@
             Sign in
         </button>
 
-        <!-- Divider -->
         <div class="flex items-center gap-3 my-4">
             <div class="flex-grow h-px bg-slate-200"></div>
             <span class="text-xs text-slate-400">or</span>
             <div class="flex-grow h-px bg-slate-200"></div>
         </div>
 
-        <!-- Google -->
         <button id="google-signin-btn"
                 class="w-full flex items-center justify-center gap-3 border border-slate-200 rounded-xl
                        py-2.5 px-4 hover:bg-slate-50 transition font-medium text-slate-700 text-sm shadow-sm">
@@ -94,13 +86,9 @@
     </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════ MAIN APP ══ -->
 <div id="app" class="hidden h-full flex flex-col">
-
-    <!-- Header -->
     <header class="bg-blue-600 text-white px-5 py-3 shadow-md flex items-center justify-between flex-shrink-0">
         <div class="flex items-center gap-2">
-            <span class="text-xl"></span>
             <h1 class="text-lg font-bold tracking-tight">EduRAG</h1>
             <span class="text-xs opacity-50 hidden sm:block ml-1">Serverless AI Knowledge Base</span>
         </div>
@@ -115,11 +103,7 @@
     </header>
 
     <main class="flex-grow flex gap-3 p-3 overflow-hidden min-h-0">
-
-        <!-- ─── Left Panel ─────────────────────────────────────── -->
         <aside class="w-72 flex-shrink-0 bg-white rounded-xl shadow-sm flex flex-col overflow-hidden">
-
-            <!-- Upload -->
             <div class="p-4 border-b border-slate-100 flex-shrink-0">
                 <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Upload Document</h2>
 
@@ -135,7 +119,7 @@
                             hover:bg-blue-50 hover:border-blue-400 transition cursor-pointer mb-2">
                     <input type="file" id="file-input" class="hidden" accept=".pdf">
                     <label for="file-input" class="cursor-pointer block">
-                        <div class="text-blue-400 text-xl mb-0.5">📄</div>
+                        <div class="text-blue-400 text-xl mb-0.5">PDF</div>
                         <span id="file-label" class="text-blue-600 text-xs font-medium">Browse PDF file</span>
                     </label>
                 </div>
@@ -148,7 +132,6 @@
                 </button>
             </div>
 
-            <!-- Document List -->
             <div class="flex-grow overflow-y-auto p-4 min-h-0">
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Documents</h3>
@@ -166,10 +149,7 @@
             </div>
         </aside>
 
-        <!-- ─── Chat Panel ─────────────────────────────────────── -->
         <section class="flex-grow bg-white rounded-xl shadow-sm flex flex-col overflow-hidden min-w-0">
-
-            <!-- Selection bar -->
             <div id="selection-bar"
                  class="px-4 py-2 border-b border-slate-100 bg-slate-50 text-xs text-slate-500
                         flex items-center gap-2 flex-shrink-0">
@@ -188,7 +168,6 @@
                 </button>
             </div>
 
-            <!-- Chat history -->
             <div id="chat-history" class="flex-grow p-4 overflow-y-auto space-y-4 bg-slate-50 min-h-0">
                 <div class="flex items-start">
                     <div class="bg-blue-600 text-white rounded-2xl rounded-tl-sm px-4 py-3
@@ -198,7 +177,6 @@
                 </div>
             </div>
 
-            <!-- Input -->
             <div class="p-4 border-t border-slate-100 bg-white flex gap-2 flex-shrink-0">
                 <input type="text" id="question-input"
                        class="flex-grow border border-slate-200 rounded-xl px-4 py-2.5 text-sm
@@ -214,25 +192,55 @@
     </main>
 </div>
 
-<!-- ══════════════════════════════════════════════════════ JS ══ -->
 <script>
 const API_URL = CONFIG.API_URL;
 
-// Declare these at the top so they are never in the TDZ when any callback fires
-let currentTab           = 'signin';
-let currentUser          = null;
+let currentTab = 'signin';
+let currentUser = null;
 let unsubscribeDocListener = null;
-let userDocuments        = {};
-let selectedDocIds       = new Set();
-let conversationHistory  = [];
+let userDocuments = {};
+let selectedDocIds = new Set();
+let conversationHistory = [];
+let selectedFile = null;
 
 firebase.initializeApp(CONFIG.FIREBASE_CONFIG);
-const auth        = firebase.auth();
+const auth = firebase.auth();
 const firestoreDb = firebase.firestore();
 
-// ── Auth ──────────────────────────────────────────────────────────────────
+const fileInput = document.getElementById('file-input');
+const uploadBtn = document.getElementById('upload-btn');
+const chatHistory = document.getElementById('chat-history');
+const questionInput = document.getElementById('question-input');
+const askBtn = document.getElementById('ask-btn');
 
-// ── Login screen logic ───────────────────────────────────────────────────
+marked.setOptions({ breaks: true });
+
+const STATUS_COLOR = {
+    Ready: 'text-green-500',
+    Failed: 'text-red-400',
+    Uploading: 'text-slate-400',
+    Downloading: 'text-blue-400',
+    Chunking: 'text-blue-400',
+    Vectorizing: 'text-blue-500',
+};
+
+const STATUS_EMOJI = {
+    Ready: 'OK',
+    Failed: 'ERR',
+    Uploading: 'UP',
+    Downloading: 'DL',
+    Chunking: 'CH',
+    Vectorizing: 'VEC',
+};
+
+function esc(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
 
 function switchTab(tab) {
     currentTab = tab;
@@ -246,7 +254,6 @@ function switchTab(tab) {
 }
 
 function toEmail(username) {
-    // Synthetic email so Firebase Auth can store username-only accounts
     return username.toLowerCase().replace(/[^a-z0-9._-]/g, '') + '@edurag.app';
 }
 
@@ -261,15 +268,15 @@ function clearAuthError() {
 }
 
 async function submitAuth() {
-    const name     = document.getElementById('auth-name').value.trim();
+    const name = document.getElementById('auth-name').value.trim();
     const password = document.getElementById('auth-password').value;
     clearAuthError();
 
-    if (!name)     return showAuthError('Please enter a username.');
+    if (!name) return showAuthError('Please enter a username.');
     if (password.length < 6) return showAuthError('Password must be at least 6 characters.');
 
     const email = toEmail(name);
-    const btn   = document.getElementById('auth-submit-btn');
+    const btn = document.getElementById('auth-submit-btn');
     btn.disabled = true;
 
     try {
@@ -282,10 +289,10 @@ async function submitAuth() {
     } catch (err) {
         const msgs = {
             'auth/email-already-in-use': 'Username already taken.',
-            'auth/user-not-found':       'Username not found.',
-            'auth/wrong-password':       'Wrong password.',
-            'auth/invalid-credential':   'Wrong username or password.',
-            'auth/weak-password':        'Password too weak (min 6 chars).',
+            'auth/user-not-found': 'Username not found.',
+            'auth/wrong-password': 'Wrong password.',
+            'auth/invalid-credential': 'Wrong username or password.',
+            'auth/weak-password': 'Password too weak (min 6 chars).',
         };
         showAuthError(msgs[err.code] || err.message);
     } finally {
@@ -293,14 +300,11 @@ async function submitAuth() {
     }
 }
 
-// Submit on Enter key
 ['auth-name', 'auth-password'].forEach(id => {
-    document.getElementById(id).addEventListener('keypress', e => {
-        if (e.key === 'Enter') submitAuth();
+    document.getElementById(id).addEventListener('keypress', event => {
+        if (event.key === 'Enter') submitAuth();
     });
 });
-
-// ── Auth state ────────────────────────────────────────────────────────────
 
 auth.onAuthStateChanged(user => {
     if (user) {
@@ -308,16 +312,26 @@ auth.onAuthStateChanged(user => {
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app').classList.remove('hidden');
         const avatar = document.getElementById('user-avatar');
-        if (user.photoURL) { avatar.src = user.photoURL; avatar.classList.remove('hidden'); }
+        if (user.photoURL) {
+            avatar.src = user.photoURL;
+            avatar.classList.remove('hidden');
+        } else {
+            avatar.classList.add('hidden');
+        }
         document.getElementById('user-name').textContent = user.displayName || '';
         startDocumentListener();
     } else {
         currentUser = null;
         document.getElementById('login-screen').classList.remove('hidden');
         document.getElementById('app').classList.add('hidden');
-        if (unsubscribeDocListener) { unsubscribeDocListener(); unsubscribeDocListener = null; }
+        if (unsubscribeDocListener) {
+            unsubscribeDocListener();
+            unsubscribeDocListener = null;
+        }
         userDocuments = {};
         selectedDocIds.clear();
+        renderDocumentList();
+        updateSelectionBar();
     }
 });
 
@@ -325,9 +339,38 @@ document.getElementById('google-signin-btn').addEventListener('click', () => {
     auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
 });
 
-function signOut() { auth.signOut(); }
+function signOut() {
+    auth.signOut();
+}
 
-// ── Firestore real-time document listener ─────────────────────────────────
+function makeFormBody(payload) {
+    const body = new URLSearchParams();
+    Object.entries(payload).forEach(([key, value]) => {
+        body.set(key, typeof value === 'string' ? value : JSON.stringify(value));
+    });
+    return body;
+}
+
+async function getIdToken() {
+    if (!currentUser) throw new Error('Not signed in');
+    return currentUser.getIdToken();
+}
+
+async function apiFetch(path, { method = 'GET', query = {}, form = null } = {}) {
+    const url = new URL(`${API_URL}${path}`);
+    Object.entries(query).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+            url.searchParams.set(key, value);
+        }
+    });
+
+    const options = { method };
+    if (form) {
+        options.body = makeFormBody(form);
+    }
+
+    return fetch(url.toString(), options);
+}
 
 function startDocumentListener() {
     if (unsubscribeDocListener) unsubscribeDocListener();
@@ -339,14 +382,14 @@ function startDocumentListener() {
                 if (change.type === 'removed') {
                     delete userDocuments[change.doc.id];
                     selectedDocIds.delete(change.doc.id);
-                } else {
-                    const prev = userDocuments[change.doc.id];
-                    const next = { id: change.doc.id, ...change.doc.data() };
-                    userDocuments[change.doc.id] = next;
-                    // Auto-select newly ready documents
-                    if (next.status === 'Ready' && (!prev || prev.status !== 'Ready')) {
-                        selectedDocIds.add(change.doc.id);
-                    }
+                    return;
+                }
+
+                const prev = userDocuments[change.doc.id];
+                const next = { id: change.doc.id, ...change.doc.data() };
+                userDocuments[change.doc.id] = next;
+                if (next.status === 'Ready' && (!prev || prev.status !== 'Ready')) {
+                    selectedDocIds.add(change.doc.id);
                 }
             });
             renderDocumentList();
@@ -354,8 +397,6 @@ function startDocumentListener() {
             updateSubjectDatalist();
         });
 }
-
-// ── Document list rendering ───────────────────────────────────────────────
 
 function renderDocumentList() {
     const el = document.getElementById('doc-list');
@@ -366,71 +407,59 @@ function renderDocumentList() {
         return;
     }
 
-    // Group by subject
     const bySubject = {};
     docs.forEach(doc => {
-        const s = doc.subject || 'General';
-        (bySubject[s] = bySubject[s] || []).push(doc);
+        const subject = doc.subject || 'General';
+        (bySubject[subject] = bySubject[subject] || []).push(doc);
     });
 
     el.innerHTML = Object.entries(bySubject)
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([subject, sdocs]) => {
-            const readyDocs = sdocs.filter(d => d.status === 'Ready');
-            const allSel = readyDocs.length > 0 && readyDocs.every(d => selectedDocIds.has(d.id));
+        .map(([subject, docsInSubject]) => {
+            const readyDocs = docsInSubject.filter(doc => doc.status === 'Ready');
+            const allSelected = readyDocs.length > 0 && readyDocs.every(doc => selectedDocIds.has(doc.id));
+            const safeSubject = JSON.stringify(subject);
             return `
             <div class="mb-4">
                 <div class="flex items-center justify-between mb-1">
-                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                        <span>📁</span> ${esc(subject)}
-                    </span>
-                    <button onclick="toggleSubject('${esc(subject)}')"
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">${esc(subject)}</span>
+                    <button onclick="toggleSubject(${safeSubject})"
                             class="text-xs text-slate-400 hover:text-blue-500 transition">
-                        ${allSel ? 'none' : 'all'}
+                        ${allSelected ? 'none' : 'all'}
                     </button>
                 </div>
                 <div class="space-y-0.5">
-                    ${sdocs.map(renderDocItem).join('')}
+                    ${docsInSubject.map(renderDocItem).join('')}
                 </div>
             </div>`;
-        }).join('');
+        })
+        .join('');
 }
-
-const STATUS_COLOR = {
-    Ready:       'text-green-500',
-    Failed:      'text-red-400',
-    Uploading:   'text-slate-400',
-    Downloading: 'text-blue-400',
-    Chunking:    'text-blue-400',
-    Vectorizing: 'text-blue-500',
-};
-const STATUS_EMOJI = {
-    Ready: '✅', Failed: '❌', Uploading: '⬆️',
-    Downloading: '⏳', Chunking: '✂️', Vectorizing: '🔢',
-};
 
 function renderDocItem(doc) {
     const ready = doc.status === 'Ready';
-    const sel   = selectedDocIds.has(doc.id);
+    const selected = selectedDocIds.has(doc.id);
     const color = STATUS_COLOR[doc.status] || 'text-slate-400';
-    const emoji = STATUS_EMOJI[doc.status] || '⏳';
+    const emoji = STATUS_EMOJI[doc.status] || '...';
+    const safeId = JSON.stringify(doc.id);
+
     return `
     <div class="flex items-start gap-1 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition group ${!ready ? 'opacity-55' : ''}">
         <label class="flex items-start gap-2 flex-1 min-w-0 cursor-pointer">
             <input type="checkbox"
-                   ${sel ? 'checked' : ''}
+                   ${selected ? 'checked' : ''}
                    ${!ready ? 'disabled' : ''}
-                   onchange="toggleDoc('${doc.id}', this.checked)"
+                   onchange="toggleDoc(${safeId}, this.checked)"
                    class="mt-0.5 w-3.5 h-3.5 accent-blue-600 flex-shrink-0">
             <div class="flex-1 min-w-0">
                 <div class="text-sm font-medium text-slate-700 truncate"
                      title="${esc(doc.filename || doc.id)}">${esc(doc.filename || doc.id)}</div>
                 <div class="text-xs ${color} flex items-center gap-1">
-                    ${emoji} ${doc.status}${doc.total_chunks ? ` · ${doc.total_chunks} chunks` : ''}
+                    ${emoji} ${esc(doc.status || 'Unknown')}${doc.total_chunks ? ` · ${doc.total_chunks} chunks` : ''}
                 </div>
             </div>
         </label>
-        <button onclick="deleteDoc('${doc.id}')"
+        <button onclick="deleteDoc(${safeId})"
                 title="Delete document"
                 class="opacity-0 group-hover:opacity-100 transition text-slate-300 hover:text-red-400 flex-shrink-0 mt-0.5 p-0.5 rounded">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -442,24 +471,22 @@ function renderDocItem(doc) {
 }
 
 async function deleteDoc(docId) {
-    if (!confirm(`Delete this document? This cannot be undone.`)) return;
+    if (!confirm('Delete this document? This cannot be undone.')) return;
+
     try {
-        const idToken = await currentUser.getIdToken();
-        const res = await fetch(`${API_URL}/documents/${encodeURIComponent(docId)}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${idToken}` },
+        const idToken = await getIdToken();
+        const res = await apiFetch(`/documents/${encodeURIComponent(docId)}`, {
+            method: 'POST',
+            form: { id_token: idToken },
         });
         if (!res.ok) {
             const err = await res.json();
-            alert(`Delete failed: ${err.error}`);
+            throw new Error(err.error || 'Delete failed');
         }
-        // Firestore listener will remove the card automatically
     } catch (err) {
         alert(`Delete failed: ${err.message}`);
     }
 }
-
-// ── Selection helpers ─────────────────────────────────────────────────────
 
 function toggleDoc(docId, checked) {
     checked ? selectedDocIds.add(docId) : selectedDocIds.delete(docId);
@@ -467,15 +494,19 @@ function toggleDoc(docId, checked) {
 }
 
 function toggleSubject(subject) {
-    const ready = Object.values(userDocuments).filter(d => (d.subject || 'General') === subject && d.status === 'Ready');
-    const allSel = ready.every(d => selectedDocIds.has(d.id));
-    ready.forEach(d => allSel ? selectedDocIds.delete(d.id) : selectedDocIds.add(d.id));
+    const readyDocs = Object.values(userDocuments).filter(doc => (doc.subject || 'General') === subject && doc.status === 'Ready');
+    const allSelected = readyDocs.every(doc => selectedDocIds.has(doc.id));
+    readyDocs.forEach(doc => {
+        allSelected ? selectedDocIds.delete(doc.id) : selectedDocIds.add(doc.id);
+    });
     renderDocumentList();
     updateSelectionBar();
 }
 
 function selectAll() {
-    Object.values(userDocuments).filter(d => d.status === 'Ready').forEach(d => selectedDocIds.add(d.id));
+    Object.values(userDocuments)
+        .filter(doc => doc.status === 'Ready')
+        .forEach(doc => selectedDocIds.add(doc.id));
     renderDocumentList();
     updateSelectionBar();
 }
@@ -500,20 +531,14 @@ function updateSelectionBar() {
 }
 
 function updateSubjectDatalist() {
-    const subjects = [...new Set(Object.values(userDocuments).map(d => d.subject || 'General'))];
+    const subjects = [...new Set(Object.values(userDocuments).map(doc => doc.subject || 'General'))];
     document.getElementById('subjects-datalist').innerHTML =
-        subjects.map(s => `<option value="${esc(s)}">`).join('');
+        subjects.map(subject => `<option value="${esc(subject)}">`).join('');
 }
 
-// ── Upload ────────────────────────────────────────────────────────────────
-
-const fileInput = document.getElementById('file-input');
-const uploadBtn = document.getElementById('upload-btn');
-let selectedFile = null;
-
-fileInput.addEventListener('change', e => {
-    if (e.target.files.length > 0) {
-        selectedFile = e.target.files[0];
+fileInput.addEventListener('change', event => {
+    if (event.target.files.length > 0) {
+        selectedFile = event.target.files[0];
         uploadBtn.disabled = false;
         document.getElementById('file-label').textContent = selectedFile.name;
     }
@@ -524,15 +549,18 @@ async function uploadFile() {
     const subject = document.getElementById('subject-input').value.trim() || 'General';
 
     uploadBtn.disabled = true;
-    uploadBtn.textContent = 'Uploading…';
+    uploadBtn.textContent = 'Uploading...';
 
     try {
-        const idToken = await currentUser.getIdToken();
-
-        const urlRes = await fetch(
-            `${API_URL}/generate-upload-url?filename=${encodeURIComponent(selectedFile.name)}&subject=${encodeURIComponent(subject)}`,
-            { headers: { Authorization: `Bearer ${idToken}` } }
-        );
+        const idToken = await getIdToken();
+        const urlRes = await apiFetch('/generate-upload-url', {
+            method: 'GET',
+            query: {
+                filename: selectedFile.name,
+                subject,
+                token: idToken,
+            },
+        });
         const urlData = await urlRes.json();
         if (!urlRes.ok) throw new Error(urlData.error || 'Failed to get upload URL');
 
@@ -542,8 +570,6 @@ async function uploadFile() {
             headers: { 'Content-Type': 'application/pdf' },
         });
         if (!putRes.ok) throw new Error('Failed to upload to Cloud Storage');
-
-        // Firestore listener will update the document card in real time
     } catch (err) {
         alert(`Upload failed: ${err.message}`);
     } finally {
@@ -555,16 +581,10 @@ async function uploadFile() {
     }
 }
 
-// ── Chat ──────────────────────────────────────────────────────────────────
-
-const chatHistory   = document.getElementById('chat-history');
-const questionInput = document.getElementById('question-input');
-const askBtn        = document.getElementById('ask-btn');
-
 askBtn.addEventListener('click', askQuestion);
-questionInput.addEventListener('keypress', e => { if (e.key === 'Enter') askQuestion(); });
-
-marked.setOptions({ breaks: true });
+questionInput.addEventListener('keypress', event => {
+    if (event.key === 'Enter') askQuestion();
+});
 
 function clearChat() {
     conversationHistory = [];
@@ -575,13 +595,6 @@ function clearChat() {
                 Hello! I'm EduRAG. Select documents from the left panel, then ask me anything about them.
             </div>
         </div>`;
-}
-
-function esc(text) {
-    if (!text) return '';
-    return String(text)
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function appendUserMessage(text) {
@@ -602,7 +615,6 @@ function createAiBubble() {
     const msg = document.createElement('div');
     msg.className = 'bg-blue-600 text-white rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%] shadow-sm text-sm leading-relaxed ai-bubble';
 
-    // Copy button — appears on hover next to the bubble
     const copyBtn = document.createElement('button');
     copyBtn.title = 'Copy';
     copyBtn.className = 'opacity-0 group-hover:opacity-100 transition self-start mt-1 text-slate-300 hover:text-blue-500 flex-shrink-0';
@@ -644,14 +656,14 @@ function appendSources(bubble, sources) {
             Sources (${sources.length})
         </summary>
         <div class="mt-2 space-y-2">
-            ${sources.map(s => `
+            ${sources.map(source => `
             <div class="bg-white/10 rounded-lg p-2 leading-relaxed">
                 <div class="font-semibold flex items-center gap-1 flex-wrap">
-                    📄 ${esc(s.filename)}
-                    ${s.subject ? `<span class="opacity-50 font-normal">· ${esc(s.subject)}</span>` : ''}
-                    <span class="opacity-50 font-normal">· p.${s.page}</span>
+                    ${esc(source.filename)}
+                    ${source.subject ? `<span class="opacity-50 font-normal">· ${esc(source.subject)}</span>` : ''}
+                    <span class="opacity-50 font-normal">· p.${source.page}</span>
                 </div>
-                <div class="mt-1 opacity-70 italic">"${esc(s.excerpt)}…"</div>
+                <div class="mt-1 opacity-70 italic">"${esc(source.excerpt)}..."</div>
             </div>`).join('')}
         </div>`;
     bubble.appendChild(details);
@@ -662,11 +674,11 @@ async function askQuestion() {
     if (!question || !currentUser) return;
 
     if (selectedDocIds.size === 0) {
-        const orig = questionInput.placeholder;
-        questionInput.placeholder = '⚠️ Select at least one document first!';
+        const originalPlaceholder = questionInput.placeholder;
+        questionInput.placeholder = 'Select at least one document first';
         questionInput.classList.add('border-amber-400', 'ring-1', 'ring-amber-400');
         setTimeout(() => {
-            questionInput.placeholder = orig;
+            questionInput.placeholder = originalPlaceholder;
             questionInput.classList.remove('border-amber-400', 'ring-1', 'ring-amber-400');
         }, 2000);
         return;
@@ -677,21 +689,18 @@ async function askQuestion() {
     askBtn.disabled = true;
 
     const bubble = createAiBubble();
-    bubble.innerHTML = '<span class="animate-pulse tracking-widest opacity-50">● ● ●</span>';
+    bubble.innerHTML = '<span class="animate-pulse tracking-widest opacity-50">...</span>';
 
     try {
-        const idToken = await currentUser.getIdToken();
-        const response = await fetch(`${API_URL}/ask`, {
+        const idToken = await getIdToken();
+        const response = await apiFetch('/ask', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${idToken}`,
-            },
-            body: JSON.stringify({
+            form: {
+                id_token: idToken,
                 question,
                 doc_ids: [...selectedDocIds],
                 history: conversationHistory,
-            }),
+            },
         });
 
         if (!response.ok) {
@@ -700,15 +709,16 @@ async function askQuestion() {
             return;
         }
 
-        const reader  = response.body.getReader();
+        const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        let buffer   = '';
+        let buffer = '';
         let fullText = '';
         let sourcesRendered = false;
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
+
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n');
             buffer = lines.pop();
@@ -728,15 +738,17 @@ async function askQuestion() {
                     } else if (data.error) {
                         bubble.innerHTML = `<span class="opacity-80">Error: ${esc(data.error)}</span>`;
                     }
-                } catch { /* malformed chunk — skip */ }
+                } catch {
+                }
             }
         }
 
-        // Save to history for next turn (keep last 6 messages = 3 turns)
         if (fullText) {
             conversationHistory.push({ role: 'user', content: question });
             conversationHistory.push({ role: 'assistant', content: fullText });
-            if (conversationHistory.length > 6) conversationHistory = conversationHistory.slice(-6);
+            if (conversationHistory.length > 6) {
+                conversationHistory = conversationHistory.slice(-6);
+            }
         }
     } catch (err) {
         bubble.innerHTML = `<span class="opacity-80">Error: ${esc(err.message)}</span>`;
