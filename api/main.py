@@ -1,32 +1,33 @@
 import os
+import json
+import re
 import datetime
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Response, stream_with_context
 from flask_cors import CORS
-from google.cloud import storage
+from google.cloud import storage, firestore
 from langchain_google_vertexai import VertexAIEmbeddings, ChatVertexAI
-from langchain.chains import LLMChain
 from langchain_chroma import Chroma
 import chromadb
+import firebase_admin
+from firebase_admin import auth as firebase_auth
 from prompts import get_rag_prompt_template
 
 app = Flask(__name__)
-CORS(app) # Enable CORS for all routes, allowing the frontend to make requests
+CORS(app)
 
-# Configuration loaded from environment variables
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-004")
 LLM_MODEL = os.environ.get("LLM_MODEL", "gemini-1.5-pro-preview-0409")
 UPLOAD_BUCKET_NAME = os.environ.get("UPLOAD_BUCKET", "edurag-raw-pdfs")
 CHROMA_HOST = os.environ.get("CHROMA_HOST", "chromadb-service")
 CHROMA_PORT = int(os.environ.get("CHROMA_PORT", 8000))
 TOP_K = int(os.environ.get("TOP_K", 3))
-
-# Initialize GCP Clients
-storage_client = storage.Client()
-embeddings_model = VertexAIEmbeddings(model_name=EMBEDDING_MODEL)
 VERTEX_REGION = os.environ.get("GOOGLE_CLOUD_REGION", "europe-west3")
+
+storage_client = storage.Client()
+db = firestore.Client()
+embeddings_model = VertexAIEmbeddings(model_name=EMBEDDING_MODEL)
 llm = ChatVertexAI(model_name=LLM_MODEL, temperature=0.2, location=VERTEX_REGION)
 
-# Initialize ChromaDB remote client
 chroma_client = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
 vector_store = Chroma(
     client=chroma_client,
@@ -34,44 +35,97 @@ vector_store = Chroma(
     embedding_function=embeddings_model
 )
 
-# Load the RAG prompt template from the separate file
 prompt_template = get_rag_prompt_template()
-llm_chain = LLMChain(llm=llm, prompt=prompt_template)
 
-@app.route('/ask', methods=['POST'])
+firebase_admin.initialize_app()
+
+
+def verify_token(req):
+    """Returns user_id from Firebase ID token, or None if invalid."""
+    auth_header = req.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None
+    try:
+        decoded = firebase_auth.verify_id_token(auth_header[7:])
+        return decoded["uid"]
+    except Exception:
+        return None
+
+
+def sanitize(s):
+    """Strip characters unsafe for GCS paths / Firestore IDs."""
+    return re.sub(r"[^a-zA-Z0-9_\-]", "_", s).strip("_") or "General"
+
+
+@app.route("/ask", methods=["POST"])
 def ask_question():
-    """
-    Chat API (Cloud Functions / Cloud Run).
-    Receives user questions and queries the vector database.
-    """
+    user_id = verify_token(request)
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
     data = request.get_json()
     question = data.get("question") if data else None
+    doc_ids = data.get("doc_ids", [])
 
     if not question:
         return jsonify({"error": "Question is required"}), 400
 
     try:
-        # Similarity Search using Chroma DB
-        docs = vector_store.similarity_search(question, k=TOP_K)
-        
+        chroma_filter = {"doc_id": {"$in": doc_ids}} if doc_ids else {"user_id": user_id}
+        docs = vector_store.similarity_search(question, k=TOP_K, filter=chroma_filter)
+
         if not docs:
-            context = "No relevant context found."
+            context = "No relevant context found in the selected documents."
+            sources = []
         else:
-            # Combine the chunks into a unified context string
             context = "\n\n---\n\n".join([doc.page_content for doc in docs])
+            seen = set()
+            sources = []
+            for doc in docs:
+                filename = doc.metadata.get("filename") or os.path.basename(doc.metadata.get("source", "Unknown"))
+                page = doc.metadata.get("page", 0) + 1
+                subject = doc.metadata.get("subject", "")
+                key = f"{filename}:{page}"
+                if key not in seen:
+                    seen.add(key)
+                    sources.append({
+                        "filename": filename,
+                        "page": page,
+                        "subject": subject,
+                        "excerpt": doc.page_content[:250].strip()
+                    })
 
-        # 3. & 4. Build prompt with context and run LLM Generation using Gemini
-        answer = llm_chain.run({"context": context, "question": question})
+        messages = prompt_template.format_messages(context=context, question=question)
 
-        return jsonify({"answer": answer, "retrieved_context": context})
+        def generate():
+            try:
+                for chunk in llm.stream(messages):
+                    if chunk.content:
+                        yield f"data: {json.dumps({'token': chunk.content})}\n\n"
+                yield f"data: {json.dumps({'sources': sources, 'done': True})}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+        return Response(
+            stream_with_context(generate()),
+            mimetype="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
 
     except Exception as e:
-        print(f"Error processing question: {str(e)}")
+        print(f"Error processing question: {e}")
         return jsonify({"error": "Failed to process the question.", "details": str(e)}), 500
 
-@app.route('/generate-upload-url', methods=['GET'])
+
+@app.route("/generate-upload-url", methods=["GET"])
 def generate_upload_url():
+    user_id = verify_token(request)
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
     filename = request.args.get("filename")
+    subject = sanitize(request.args.get("subject", "General"))
+
     if not filename:
         return jsonify({"error": "Filename is required"}), 400
 
@@ -80,11 +134,13 @@ def generate_upload_url():
         import google.auth.transport.requests as google_requests
 
         credentials, _ = google.auth.default()
-        auth_request = google_requests.Request()
-        credentials.refresh(auth_request)
+        google_requests.Request()(credentials)
+
+        gcs_path = f"uploads/{user_id}/{subject}/{filename}"
+        doc_id = gcs_path.replace("/", "_")
 
         bucket = storage_client.bucket(UPLOAD_BUCKET_NAME)
-        blob = bucket.blob(f"uploads/{filename}")
+        blob = bucket.blob(gcs_path)
 
         url = blob.generate_signed_url(
             version="v4",
@@ -94,10 +150,27 @@ def generate_upload_url():
             service_account_email=credentials.service_account_email,
             access_token=credentials.token,
         )
-        return jsonify({"upload_url": url, "filename": f"uploads/{filename}"})
+
+        # Pre-create Firestore doc so the real-time listener fires immediately
+        db.collection("users").document(user_id) \
+          .collection("documents").document(doc_id).set({
+              "status": "Uploading",
+              "filename": filename,
+              "subject": subject,
+              "user_id": user_id,
+              "created_at": firestore.SERVER_TIMESTAMP,
+          })
+
+        return jsonify({
+            "upload_url": url,
+            "document_id": doc_id,
+            "user_id": user_id,
+        })
+
     except Exception as e:
-        print(f"Error generating presigned URL: {str(e)}")
+        print(f"Error generating presigned URL: {e}")
         return jsonify({"error": "Failed to generate URL", "details": str(e)}), 500
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))

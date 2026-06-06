@@ -7,3 +7,4 @@ google-cloud-firestore==2.15.0
 google-cloud-storage==2.14.0
 chromadb==0.5.23
 langchain-chroma==0.1.4
+firebase-admin==6.5.0
