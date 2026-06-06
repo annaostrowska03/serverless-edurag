@@ -38,7 +38,7 @@ vector_store = Chroma(
 
 prompt_template = get_rag_prompt_template()
 
-firebase_admin.initialize_app()
+firebase_admin.initialize_app(options={"projectId": os.environ.get("GOOGLE_CLOUD_PROJECT", "edurag-495620")})
 
 
 def verify_token(req):
