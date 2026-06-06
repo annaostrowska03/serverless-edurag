@@ -139,6 +139,23 @@
                         <button onclick="deselectAll()" class="text-slate-400 hover:text-slate-600 transition">None</button>
                     </div>
                 </div>
+                <div class="space-y-2 mb-3">
+                    <input type="text" id="doc-search"
+                           placeholder="Search documents..."
+                           class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm
+                                  focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent">
+                    <div class="flex items-center gap-2">
+                        <select id="doc-subject-filter"
+                                class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white
+                                       focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent">
+                            <option value="__all__">All subjects</option>
+                        </select>
+                        <label class="flex items-center gap-2 text-xs text-slate-500 whitespace-nowrap">
+                            <input type="checkbox" id="doc-ready-only" class="accent-blue-600">
+                            Ready only
+                        </label>
+                    </div>
+                </div>
                 <div id="doc-list">
                     <p class="text-xs text-slate-400 italic text-center py-6 leading-relaxed">
                         No documents yet.<br>Upload a PDF to get started.
@@ -164,6 +181,9 @@
                               d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                     </svg>
                 </button>
+            </div>
+            <div id="selected-doc-chips"
+                 class="hidden px-4 py-2 border-b border-slate-100 bg-white/80 flex flex-wrap gap-2 flex-shrink-0">
             </div>
 
             <div id="chat-history" class="flex-grow p-4 overflow-y-auto space-y-4 bg-slate-50 min-h-0">
@@ -203,6 +223,9 @@ let conversationHistory = [];
 let chatSessions = {};
 let activeChatId = null;
 let selectedFile = null;
+let docSearchQuery = '';
+let selectedSubjectFilter = '__all__';
+let readyOnlyFilter = false;
 const MAX_STORED_CHAT_MESSAGES = 50;
 
 firebase.initializeApp(CONFIG.FIREBASE_CONFIG);
@@ -214,6 +237,10 @@ const uploadBtn = document.getElementById('upload-btn');
 const chatHistory = document.getElementById('chat-history');
 const chatSessionList = document.getElementById('chat-session-list');
 const newChatBtn = document.getElementById('new-chat-btn');
+const docSearchInput = document.getElementById('doc-search');
+const docSubjectFilter = document.getElementById('doc-subject-filter');
+const docReadyOnlyToggle = document.getElementById('doc-ready-only');
+const selectedDocChips = document.getElementById('selected-doc-chips');
 const questionInput = document.getElementById('question-input');
 const askBtn = document.getElementById('ask-btn');
 
@@ -566,11 +593,19 @@ auth.onAuthStateChanged(user => {
         }
         userDocuments = {};
         selectedDocIds.clear();
+        docSearchQuery = '';
+        selectedSubjectFilter = '__all__';
+        readyOnlyFilter = false;
+        docSearchInput.value = '';
+        docSubjectFilter.innerHTML = '<option value="__all__">All subjects</option>';
+        docSubjectFilter.value = '__all__';
+        docReadyOnlyToggle.checked = false;
         chatSessions = {};
         activeChatId = null;
         conversationHistory = [];
         renderDocumentList();
         updateSelectionBar();
+        renderSelectedDocChips();
         renderChatSessionList();
         renderConversationHistory();
     }
@@ -629,18 +664,35 @@ function startDocumentListener() {
                     selectedDocIds.add(change.doc.id);
                 }
             });
-            renderDocumentList();
-            updateSelectionBar();
-            updateSubjectDatalist();
-        });
+        renderDocumentList();
+        updateSelectionBar();
+        updateSubjectFilterOptions();
+        updateSubjectDatalist();
+    });
+}
+
+function getFilteredDocuments() {
+    return Object.values(userDocuments).filter(doc => {
+        const filename = (doc.filename || doc.id || '').toLowerCase();
+        const subject = (doc.subject || 'General').toLowerCase();
+        const matchesSearch = !docSearchQuery || filename.includes(docSearchQuery) || subject.includes(docSearchQuery);
+        const matchesSubject = selectedSubjectFilter === '__all__' || (doc.subject || 'General') === selectedSubjectFilter;
+        const matchesReady = !readyOnlyFilter || doc.status === 'Ready';
+        return matchesSearch && matchesSubject && matchesReady;
+    });
 }
 
 function renderDocumentList() {
     const el = document.getElementById('doc-list');
-    const docs = Object.values(userDocuments);
+    const docs = getFilteredDocuments();
+
+    if (Object.keys(userDocuments).length === 0) {
+        el.innerHTML = '<p class="text-xs text-slate-400 italic text-center py-6 leading-relaxed">No documents yet.<br>Upload a PDF to get started.</p>';
+        return;
+    }
 
     if (docs.length === 0) {
-        el.innerHTML = '<p class="text-xs text-slate-400 italic text-center py-6 leading-relaxed">No documents yet.<br>Upload a PDF to get started.</p>';
+        el.innerHTML = '<p class="text-xs text-slate-400 italic text-center py-6 leading-relaxed">No matching documents.<br>Try a different filter.</p>';
         return;
     }
 
@@ -731,7 +783,7 @@ function toggleDoc(docId, checked) {
 }
 
 function toggleSubject(subject) {
-    const readyDocs = Object.values(userDocuments).filter(doc => (doc.subject || 'General') === subject && doc.status === 'Ready');
+    const readyDocs = getFilteredDocuments().filter(doc => (doc.subject || 'General') === subject && doc.status === 'Ready');
     const allSelected = readyDocs.every(doc => selectedDocIds.has(doc.id));
     readyDocs.forEach(doc => {
         allSelected ? selectedDocIds.delete(doc.id) : selectedDocIds.add(doc.id);
@@ -741,7 +793,7 @@ function toggleSubject(subject) {
 }
 
 function selectAll() {
-    Object.values(userDocuments)
+    getFilteredDocuments()
         .filter(doc => doc.status === 'Ready')
         .forEach(doc => selectedDocIds.add(doc.id));
     renderDocumentList();
@@ -757,14 +809,78 @@ function deselectAll() {
 function updateSelectionBar() {
     const count = selectedDocIds.size;
     const infoEl = document.getElementById('selection-info');
+    const visibleCount = getFilteredDocuments().length;
+    const totalCount = Object.keys(userDocuments).length;
+
     if (count === 0) {
-        infoEl.textContent = 'No documents selected — select from the left panel';
+        if (totalCount === 0) {
+            infoEl.textContent = 'No documents selected — upload a document to get started';
+        } else if (visibleCount !== totalCount) {
+            infoEl.textContent = `No documents selected — ${visibleCount} of ${totalCount} documents match the current filters`;
+        } else {
+            infoEl.textContent = 'No documents selected — select from the left panel';
+        }
+        renderSelectedDocChips();
         return;
     }
+
     const subjects = [...new Set(
         [...selectedDocIds].map(id => userDocuments[id]?.subject || 'General')
     )];
-    infoEl.textContent = `${count} document${count !== 1 ? 's' : ''} selected · ${subjects.join(', ')}`;
+    const scopeText = visibleCount !== totalCount
+        ? ` · ${visibleCount} visible now`
+        : '';
+    infoEl.textContent = `${count} document${count !== 1 ? 's' : ''} selected · ${subjects.join(', ')}${scopeText}`;
+    renderSelectedDocChips();
+}
+
+function renderSelectedDocChips() {
+    const selectedDocs = [...selectedDocIds]
+        .map(id => userDocuments[id])
+        .filter(Boolean)
+        .sort((a, b) => (a.filename || a.id).localeCompare(b.filename || b.id));
+
+    if (selectedDocs.length === 0) {
+        selectedDocChips.classList.add('hidden');
+        selectedDocChips.innerHTML = '';
+        return;
+    }
+
+    selectedDocChips.classList.remove('hidden');
+    selectedDocChips.innerHTML = selectedDocs.slice(0, 8).map(doc => {
+        const safeId = JSON.stringify(doc.id);
+        return `
+        <button onclick='removeSelectedDoc(${safeId})'
+                class="inline-flex items-center gap-2 rounded-full bg-blue-50 text-blue-700 px-3 py-1 text-xs border border-blue-100 hover:bg-blue-100 transition">
+            <span class="truncate max-w-[140px]">${esc(doc.filename || doc.id)}</span>
+            <span class="text-blue-400">×</span>
+        </button>`;
+    }).join('');
+
+    if (selectedDocs.length > 8) {
+        selectedDocChips.innerHTML += `
+        <span class="inline-flex items-center rounded-full bg-slate-100 text-slate-500 px-3 py-1 text-xs border border-slate-200">
+            +${selectedDocs.length - 8} more
+        </span>`;
+    }
+}
+
+function removeSelectedDoc(docId) {
+    selectedDocIds.delete(docId);
+    renderDocumentList();
+    updateSelectionBar();
+}
+
+function updateSubjectFilterOptions() {
+    const subjects = [...new Set(Object.values(userDocuments).map(doc => doc.subject || 'General'))]
+        .sort((a, b) => a.localeCompare(b));
+    const currentValue = subjects.includes(selectedSubjectFilter) ? selectedSubjectFilter : '__all__';
+    selectedSubjectFilter = currentValue;
+    docSubjectFilter.innerHTML = [
+        '<option value="__all__">All subjects</option>',
+        ...subjects.map(subject => `<option value="${esc(subject)}">${esc(subject)}</option>`)
+    ].join('');
+    docSubjectFilter.value = currentValue;
 }
 
 function updateSubjectDatalist() {
@@ -822,6 +938,21 @@ askBtn.addEventListener('click', askQuestion);
 newChatBtn.addEventListener('click', () => {
     createNewChatSession();
 });
+docSearchInput.addEventListener('input', event => {
+    docSearchQuery = event.target.value.trim().toLowerCase();
+    renderDocumentList();
+    updateSelectionBar();
+});
+docSubjectFilter.addEventListener('change', event => {
+    selectedSubjectFilter = event.target.value;
+    renderDocumentList();
+    updateSelectionBar();
+});
+docReadyOnlyToggle.addEventListener('change', event => {
+    readyOnlyFilter = event.target.checked;
+    renderDocumentList();
+    updateSelectionBar();
+});
 questionInput.addEventListener('keypress', event => {
     if (event.key === 'Enter') askQuestion();
 });
@@ -846,7 +977,11 @@ function appendUserMessage(text) {
 function appendAssistantMessage(text, sources = []) {
     const bubble = createAiBubble();
     bubble.innerHTML = marked.parse(text || '');
-    appendSources(bubble, sources);
+    if (sources.length > 0) {
+        appendSources(bubble, sources);
+    } else {
+        appendNoSourcesNotice(bubble);
+    }
     return bubble;
 }
 
@@ -911,6 +1046,13 @@ function appendSources(bubble, sources) {
     bubble.appendChild(details);
 }
 
+function appendNoSourcesNotice(bubble) {
+    const notice = document.createElement('div');
+    notice.className = 'mt-3 pt-2 border-t border-white/20 text-xs opacity-60';
+    notice.textContent = 'No sources returned for this answer.';
+    bubble.appendChild(notice);
+}
+
 async function askQuestion() {
     const question = questionInput.value.trim();
     if (!question || !currentUser) return;
@@ -971,7 +1113,11 @@ async function askQuestion() {
             } else if (data.sources && !sourcesRendered) {
                 finalSources = data.sources;
                 sourcesRendered = true;
-                appendSources(bubble, data.sources);
+                if (data.sources.length > 0) {
+                    appendSources(bubble, data.sources);
+                } else {
+                    appendNoSourcesNotice(bubble);
+                }
                 chatHistory.scrollTop = chatHistory.scrollHeight;
             } else if (data.error) {
                 bubble.innerHTML = `<span class="opacity-80">Error: ${esc(data.error)}</span>`;
@@ -1001,6 +1147,10 @@ async function askQuestion() {
                 processSsePayload(trailing.slice(6));
             } catch {
             }
+        }
+
+        if (!sourcesRendered) {
+            appendNoSourcesNotice(bubble);
         }
 
         if (fullText) {
