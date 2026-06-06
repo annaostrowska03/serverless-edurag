@@ -336,7 +336,7 @@ function renderConversationHistory() {
         if (message.role === 'user') {
             appendUserMessage(message.content);
         } else if (message.role === 'assistant') {
-            appendAssistantMessage(message.content);
+            appendAssistantMessage(message.content, message.sources || []);
         }
     }
 }
@@ -374,7 +374,7 @@ function renderChatSessionList() {
         const active = session.id === activeChatId;
         const safeId = JSON.stringify(session.id);
         return `
-        <button onclick="selectChatSession(${safeId})"
+        <button onclick='selectChatSession(${safeId})'
                 class="w-full text-left rounded-lg border px-3 py-2 transition ${
                     active
                         ? 'border-blue-200 bg-blue-50'
@@ -778,9 +778,11 @@ function appendUserMessage(text) {
     chatHistory.scrollTop = chatHistory.scrollHeight;
 }
 
-function appendAssistantMessage(text) {
+function appendAssistantMessage(text, sources = []) {
     const bubble = createAiBubble();
     bubble.innerHTML = marked.parse(text || '');
+    appendSources(bubble, sources);
+    return bubble;
 }
 
 function createAiBubble() {
@@ -892,7 +894,24 @@ async function askQuestion() {
         const decoder = new TextDecoder();
         let buffer = '';
         let fullText = '';
+        let finalSources = [];
         let sourcesRendered = false;
+
+        function processSsePayload(payload) {
+            const data = JSON.parse(payload);
+            if (data.token !== undefined) {
+                fullText += data.token;
+                bubble.innerHTML = marked.parse(fullText);
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            } else if (data.sources && !sourcesRendered) {
+                finalSources = data.sources;
+                sourcesRendered = true;
+                appendSources(bubble, data.sources);
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            } else if (data.error) {
+                bubble.innerHTML = `<span class="opacity-80">Error: ${esc(data.error)}</span>`;
+            }
+        }
 
         while (true) {
             const { done, value } = await reader.read();
@@ -905,26 +924,23 @@ async function askQuestion() {
             for (const line of lines) {
                 if (!line.startsWith('data: ')) continue;
                 try {
-                    const data = JSON.parse(line.slice(6));
-                    if (data.token !== undefined) {
-                        fullText += data.token;
-                        bubble.innerHTML = marked.parse(fullText);
-                        chatHistory.scrollTop = chatHistory.scrollHeight;
-                    } else if (data.sources && !sourcesRendered) {
-                        sourcesRendered = true;
-                        appendSources(bubble, data.sources);
-                        chatHistory.scrollTop = chatHistory.scrollHeight;
-                    } else if (data.error) {
-                        bubble.innerHTML = `<span class="opacity-80">Error: ${esc(data.error)}</span>`;
-                    }
+                    processSsePayload(line.slice(6));
                 } catch {
                 }
             }
         }
 
+        const trailing = buffer.trim();
+        if (trailing.startsWith('data: ')) {
+            try {
+                processSsePayload(trailing.slice(6));
+            } catch {
+            }
+        }
+
         if (fullText) {
             conversationHistory.push({ role: 'user', content: question });
-            conversationHistory.push({ role: 'assistant', content: fullText });
+            conversationHistory.push({ role: 'assistant', content: fullText, sources: finalSources });
             await persistActiveChatSession();
         }
     } catch (err) {
