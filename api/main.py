@@ -7,6 +7,7 @@ from flask_cors import CORS
 from google.cloud import storage, firestore
 from langchain_google_vertexai import VertexAIEmbeddings, ChatVertexAI
 from langchain_chroma import Chroma
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 import chromadb
 import firebase_admin
 from firebase_admin import auth as firebase_auth
@@ -66,6 +67,7 @@ def ask_question():
     data = request.get_json()
     question = data.get("question") if data else None
     doc_ids = data.get("doc_ids", [])
+    history = data.get("history", [])   # [{role: "user"|"assistant", content: "..."}]
 
     if not question:
         return jsonify({"error": "Question is required"}), 400
@@ -95,7 +97,15 @@ def ask_question():
                         "excerpt": doc.page_content[:250].strip()
                     })
 
-        messages = prompt_template.format_messages(context=context, question=question)
+        # Build message list: system (with context) + conversation history + current question
+        from prompts import SYSTEM_PROMPT
+        messages = [SystemMessage(content=SYSTEM_PROMPT.format(context=context))]
+        for msg in history[-6:]:   # keep last 3 turns to avoid blowing context window
+            if msg.get("role") == "user":
+                messages.append(HumanMessage(content=msg["content"]))
+            elif msg.get("role") == "assistant":
+                messages.append(AIMessage(content=msg["content"]))
+        messages.append(HumanMessage(content=question))
 
         def generate():
             try:
@@ -170,6 +180,50 @@ def generate_upload_url():
     except Exception as e:
         print(f"Error generating presigned URL: {e}")
         return jsonify({"error": "Failed to generate URL", "details": str(e)}), 500
+
+
+@app.route("/documents/<doc_id>", methods=["DELETE"])
+def delete_document(doc_id):
+    user_id = verify_token(request)
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        # Verify the document belongs to this user
+        doc_ref = db.collection("users").document(user_id).collection("documents").document(doc_id)
+        doc_snap = doc_ref.get()
+        if not doc_snap.exists:
+            return jsonify({"error": "Document not found"}), 404
+
+        d = doc_snap.to_dict()
+        gcs_path = f"uploads/{user_id}/{d.get('subject', 'General')}/{d.get('filename', '')}"
+
+        # 1. Remove vectors from ChromaDB
+        try:
+            collection = chroma_client.get_collection("edurag_documents")
+            results = collection.get(where={"doc_id": doc_id})
+            if results["ids"]:
+                collection.delete(ids=results["ids"])
+        except Exception as e:
+            print(f"ChromaDB delete warning: {e}")
+
+        # 2. Remove PDF from GCS
+        try:
+            bucket = storage_client.bucket(UPLOAD_BUCKET_NAME)
+            blob = bucket.blob(gcs_path)
+            if blob.exists():
+                blob.delete()
+        except Exception as e:
+            print(f"GCS delete warning: {e}")
+
+        # 3. Remove Firestore record
+        doc_ref.delete()
+
+        return jsonify({"deleted": doc_id})
+
+    except Exception as e:
+        print(f"Error deleting document {doc_id}: {e}")
+        return jsonify({"error": "Failed to delete document", "details": str(e)}), 500
 
 
 if __name__ == "__main__":
