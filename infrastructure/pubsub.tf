@@ -9,8 +9,13 @@ resource "google_pubsub_subscription" "pdf_uploads_sub" {
   topic = google_pubsub_topic.pdf_uploads_topic.name
 
   push_config {
-    push_endpoint = google_cloud_run_v2_service.worker_service.uri
+      push_endpoint = google_cloud_run_v2_service.worker_service.uri
+
+      oidc_token {
+        service_account_email = google_service_account.cloud_run_sa.email
+      }
   }
+
 
   ack_deadline_seconds = 600
 }
