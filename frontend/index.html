@@ -5,7 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EduRAG - AI Knowledge Base</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="config.js"></script>
+    <style>
+        .ai-bubble p { margin-bottom: 0.5rem; }
+        .ai-bubble p:last-child { margin-bottom: 0; }
+        .ai-bubble strong { font-weight: 700; }
+        .ai-bubble em { font-style: italic; }
+        .ai-bubble ul { list-style-type: disc; padding-left: 1.25rem; margin-bottom: 0.5rem; }
+        .ai-bubble ol { list-style-type: decimal; padding-left: 1.25rem; margin-bottom: 0.5rem; }
+        .ai-bubble li { margin-bottom: 0.25rem; }
+        .ai-bubble h1, .ai-bubble h2, .ai-bubble h3 { font-weight: 700; margin-bottom: 0.5rem; }
+        .ai-bubble h1 { font-size: 1.2em; }
+        .ai-bubble h2 { font-size: 1.1em; }
+        .ai-bubble h3 { font-size: 1.05em; }
+        .ai-bubble code { background: rgba(255,255,255,0.2); border-radius: 3px; padding: 0.1em 0.3em; font-family: monospace; font-size: 0.9em; }
+        .ai-bubble pre { background: rgba(0,0,0,0.25); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.5rem; overflow-x: auto; }
+        .ai-bubble pre code { background: transparent; padding: 0; }
+        .ai-bubble blockquote { border-left: 3px solid rgba(255,255,255,0.4); padding-left: 0.75rem; opacity: 0.85; margin-bottom: 0.5rem; }
+    </style>
 </head>
 <body class="bg-slate-100 h-screen flex flex-col font-sans">
     
@@ -137,17 +155,25 @@
             if (e.key === 'Enter') askQuestion();
         });
 
+        marked.setOptions({ breaks: true });
+
         function appendMessage(text, isUser) {
             const wrapper = document.createElement('div');
             wrapper.className = `flex items-start ${isUser ? 'justify-end' : ''}`;
-            
+
             const message = document.createElement('div');
             message.className = `rounded-lg p-3 max-w-[80%] shadow-sm ${isUser ? 'bg-slate-200 text-slate-800' : 'bg-blue-600 text-white'}`;
-            message.innerText = text;
-            
+
+            if (isUser) {
+                message.innerText = text;
+            } else {
+                message.innerHTML = marked.parse(text);
+                message.classList.add('ai-bubble');
+            }
+
             wrapper.appendChild(message);
             chatHistory.appendChild(wrapper);
-            chatHistory.scrollTop = chatHistory.scrollHeight; // Auto-scroll
+            chatHistory.scrollTop = chatHistory.scrollHeight;
         }
 
         async function askQuestion() {
