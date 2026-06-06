@@ -127,6 +127,42 @@ def build_doc_ref(user_id, doc_id):
     return db.collection("users").document(user_id).collection("documents").document(doc_id)
 
 
+def retrieve_docs(question, user_id, doc_ids):
+    if doc_ids:
+        ranked_matches = []
+        for doc_id in doc_ids:
+            matches = vector_store.similarity_search_with_score(
+                question,
+                k=TOP_K,
+                filter={"doc_id": doc_id},
+            )
+            ranked_matches.extend(matches)
+
+        ranked_matches.sort(key=lambda item: item[1])
+
+        docs = []
+        seen = set()
+        for doc, _score in ranked_matches:
+            key = (
+                doc.metadata.get("doc_id"),
+                doc.metadata.get("page"),
+                doc.page_content[:120],
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            docs.append(doc)
+            if len(docs) >= TOP_K:
+                break
+        return docs
+
+    return vector_store.similarity_search(
+        question,
+        k=TOP_K,
+        filter={"user_id": user_id},
+    )
+
+
 @app.route("/ask", methods=["POST", "OPTIONS"])
 def ask_question():
     user_id = verify_token()
@@ -142,8 +178,7 @@ def ask_question():
         return jsonify({"error": "Question is required"}), 400
 
     try:
-        chroma_filter = {"doc_id": {"$in": doc_ids}} if doc_ids else {"user_id": user_id}
-        docs = vector_store.similarity_search(question, k=TOP_K, filter=chroma_filter)
+        docs = retrieve_docs(question, user_id, doc_ids)
 
         if not docs:
             context = "No relevant context found in the selected documents."
