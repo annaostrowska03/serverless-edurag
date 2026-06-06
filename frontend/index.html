@@ -423,7 +423,7 @@ function renderDocumentList() {
             <div class="mb-4">
                 <div class="flex items-center justify-between mb-1">
                     <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">${esc(subject)}</span>
-                    <button onclick="toggleSubject(${safeSubject})"
+                    <button onclick='toggleSubject(${safeSubject})'
                             class="text-xs text-slate-400 hover:text-blue-500 transition">
                         ${allSelected ? 'none' : 'all'}
                     </button>
@@ -449,7 +449,7 @@ function renderDocItem(doc) {
             <input type="checkbox"
                    ${selected ? 'checked' : ''}
                    ${!ready ? 'disabled' : ''}
-                   onchange="toggleDoc(${safeId}, this.checked)"
+                   onchange='toggleDoc(${safeId}, this.checked)'
                    class="mt-0.5 w-3.5 h-3.5 accent-blue-600 flex-shrink-0">
             <div class="flex-1 min-w-0">
                 <div class="text-sm font-medium text-slate-700 truncate"
@@ -459,7 +459,7 @@ function renderDocItem(doc) {
                 </div>
             </div>
         </label>
-        <button onclick="deleteDoc(${safeId})"
+        <button onclick='deleteDoc(${safeId})'
                 title="Delete document"
                 class="opacity-0 group-hover:opacity-100 transition text-slate-300 hover:text-red-400 flex-shrink-0 mt-0.5 p-0.5 rounded">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
