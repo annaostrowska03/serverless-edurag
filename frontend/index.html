@@ -116,6 +116,21 @@
             </div>
 
             <div class="flex-grow overflow-y-auto p-4 min-h-0">
+                <div class="mb-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Chats</h3>
+                        <button id="new-chat-btn"
+                                class="text-xs text-blue-500 hover:text-blue-700 transition">
+                            New
+                        </button>
+                    </div>
+                    <div id="chat-session-list" class="space-y-1.5">
+                        <p class="text-xs text-slate-400 italic text-center py-3 leading-relaxed">
+                            No chats yet.
+                        </p>
+                    </div>
+                </div>
+
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Documents</h3>
                     <div class="flex gap-2 text-xs">
@@ -181,9 +196,12 @@ const API_URL = CONFIG.API_URL;
 let currentTab = 'signin';
 let currentUser = null;
 let unsubscribeDocListener = null;
+let unsubscribeChatSessionsListener = null;
 let userDocuments = {};
 let selectedDocIds = new Set();
 let conversationHistory = [];
+let chatSessions = {};
+let activeChatId = null;
 let selectedFile = null;
 
 firebase.initializeApp(CONFIG.FIREBASE_CONFIG);
@@ -193,6 +211,8 @@ const firestoreDb = firebase.firestore();
 const fileInput = document.getElementById('file-input');
 const uploadBtn = document.getElementById('upload-btn');
 const chatHistory = document.getElementById('chat-history');
+const chatSessionList = document.getElementById('chat-session-list');
+const newChatBtn = document.getElementById('new-chat-btn');
 const questionInput = document.getElementById('question-input');
 const askBtn = document.getElementById('ask-btn');
 
@@ -283,6 +303,168 @@ async function submitAuth() {
     }
 }
 
+function getUserChatsCollection() {
+    return firestoreDb.collection('users').doc(currentUser.uid).collection('chats');
+}
+
+function getGreetingMarkup() {
+    return `
+        <div class="flex items-start">
+            <div class="bg-blue-600 text-white rounded-2xl rounded-tl-sm px-4 py-3
+                        max-w-[85%] shadow-sm text-sm leading-relaxed">
+                Hello! I'm EduRAG. Select documents from the left panel, then ask me anything about them.
+            </div>
+        </div>`;
+}
+
+function getChatTitle(messages) {
+    const firstUserMessage = messages.find(msg => msg.role === 'user')?.content || '';
+    const normalized = firstUserMessage.trim();
+    if (!normalized) return 'New chat';
+    return normalized.length > 36 ? `${normalized.slice(0, 36)}...` : normalized;
+}
+
+function renderConversationHistory() {
+    if (conversationHistory.length === 0) {
+        chatHistory.innerHTML = getGreetingMarkup();
+        return;
+    }
+
+    chatHistory.innerHTML = '';
+    for (const message of conversationHistory) {
+        if (message.role === 'user') {
+            appendUserMessage(message.content);
+        } else if (message.role === 'assistant') {
+            appendAssistantMessage(message.content);
+        }
+    }
+}
+
+function sortChatSessions() {
+    return Object.values(chatSessions).sort((a, b) => {
+        const aTime = a.updated_at?.toMillis?.() || 0;
+        const bTime = b.updated_at?.toMillis?.() || 0;
+        return bTime - aTime;
+    });
+}
+
+function formatChatTimestamp(timestamp) {
+    if (!timestamp?.toDate) return '';
+    const date = timestamp.toDate();
+    return date.toLocaleString([], {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+
+function renderChatSessionList() {
+    const sessions = sortChatSessions();
+    if (sessions.length === 0) {
+        chatSessionList.innerHTML = `
+            <p class="text-xs text-slate-400 italic text-center py-3 leading-relaxed">
+                No chats yet.
+            </p>`;
+        return;
+    }
+
+    chatSessionList.innerHTML = sessions.map(session => {
+        const active = session.id === activeChatId;
+        const safeId = JSON.stringify(session.id);
+        return `
+        <button onclick="selectChatSession(${safeId})"
+                class="w-full text-left rounded-lg border px-3 py-2 transition ${
+                    active
+                        ? 'border-blue-200 bg-blue-50'
+                        : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'
+                }">
+            <div class="text-sm font-medium text-slate-700 truncate">${esc(session.title || 'New chat')}</div>
+            <div class="text-[11px] text-slate-400 mt-1">
+                ${session.message_count || 0} messages${formatChatTimestamp(session.updated_at) ? ` · ${formatChatTimestamp(session.updated_at)}` : ''}
+            </div>
+        </button>`;
+    }).join('');
+}
+
+async function persistActiveChatSession() {
+    if (!currentUser || !activeChatId) return;
+
+    const messages = conversationHistory.slice(-20);
+    await getUserChatsCollection().doc(activeChatId).set(
+        {
+            title: getChatTitle(messages),
+            messages,
+            message_count: messages.length,
+            updated_at: firebase.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+    );
+}
+
+async function createNewChatSession() {
+    if (!currentUser) return;
+
+    const docRef = getUserChatsCollection().doc();
+    activeChatId = docRef.id;
+    conversationHistory = [];
+    renderConversationHistory();
+    renderChatSessionList();
+
+    await docRef.set({
+        title: 'New chat',
+        messages: [],
+        message_count: 0,
+        created_at: firebase.firestore.FieldValue.serverTimestamp(),
+        updated_at: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+}
+
+function selectChatSession(chatId) {
+    const session = chatSessions[chatId];
+    if (!session) return;
+    activeChatId = chatId;
+    conversationHistory = Array.isArray(session.messages) ? session.messages : [];
+    renderConversationHistory();
+    renderChatSessionList();
+}
+
+function startChatSessionsListener() {
+    if (unsubscribeChatSessionsListener) unsubscribeChatSessionsListener();
+
+    unsubscribeChatSessionsListener = getUserChatsCollection()
+        .orderBy('updated_at', 'desc')
+        .onSnapshot(async snapshot => {
+            chatSessions = {};
+            snapshot.forEach(doc => {
+                chatSessions[doc.id] = { id: doc.id, ...doc.data() };
+            });
+
+            const sessions = sortChatSessions();
+            if (!activeChatId) {
+                if (sessions.length > 0) {
+                    activeChatId = sessions[0].id;
+                    conversationHistory = Array.isArray(sessions[0].messages) ? sessions[0].messages : [];
+                } else {
+                    await createNewChatSession();
+                    return;
+                }
+            } else if (chatSessions[activeChatId]) {
+                const activeSession = chatSessions[activeChatId];
+                conversationHistory = Array.isArray(activeSession.messages) ? activeSession.messages : [];
+            } else if (sessions.length > 0) {
+                activeChatId = sessions[0].id;
+                conversationHistory = Array.isArray(sessions[0].messages) ? sessions[0].messages : [];
+            } else {
+                activeChatId = null;
+                conversationHistory = [];
+            }
+
+            renderConversationHistory();
+            renderChatSessionList();
+        });
+}
+
 ['auth-name', 'auth-password'].forEach(id => {
     document.getElementById(id).addEventListener('keypress', event => {
         if (event.key === 'Enter') submitAuth();
@@ -303,6 +485,7 @@ auth.onAuthStateChanged(user => {
         }
         document.getElementById('user-name').textContent = user.displayName || '';
         startDocumentListener();
+        startChatSessionsListener();
     } else {
         currentUser = null;
         document.getElementById('login-screen').classList.remove('hidden');
@@ -311,10 +494,19 @@ auth.onAuthStateChanged(user => {
             unsubscribeDocListener();
             unsubscribeDocListener = null;
         }
+        if (unsubscribeChatSessionsListener) {
+            unsubscribeChatSessionsListener();
+            unsubscribeChatSessionsListener = null;
+        }
         userDocuments = {};
         selectedDocIds.clear();
+        chatSessions = {};
+        activeChatId = null;
+        conversationHistory = [];
         renderDocumentList();
         updateSelectionBar();
+        renderChatSessionList();
+        renderConversationHistory();
     }
 });
 
@@ -561,19 +753,17 @@ async function uploadFile() {
 }
 
 askBtn.addEventListener('click', askQuestion);
+newChatBtn.addEventListener('click', () => {
+    createNewChatSession();
+});
 questionInput.addEventListener('keypress', event => {
     if (event.key === 'Enter') askQuestion();
 });
 
-function clearChat() {
+async function clearChat() {
     conversationHistory = [];
-    chatHistory.innerHTML = `
-        <div class="flex items-start">
-            <div class="bg-blue-600 text-white rounded-2xl rounded-tl-sm px-4 py-3
-                        max-w-[85%] shadow-sm text-sm leading-relaxed">
-                Hello! I'm EduRAG. Select documents from the left panel, then ask me anything about them.
-            </div>
-        </div>`;
+    renderConversationHistory();
+    await persistActiveChatSession();
 }
 
 function appendUserMessage(text) {
@@ -585,6 +775,11 @@ function appendUserMessage(text) {
     wrap.appendChild(msg);
     chatHistory.appendChild(wrap);
     chatHistory.scrollTop = chatHistory.scrollHeight;
+}
+
+function appendAssistantMessage(text) {
+    const bubble = createAiBubble();
+    bubble.innerHTML = marked.parse(text || '');
 }
 
 function createAiBubble() {
@@ -663,6 +858,10 @@ async function askQuestion() {
         return;
     }
 
+    if (!activeChatId) {
+        await createNewChatSession();
+    }
+
     appendUserMessage(question);
     questionInput.value = '';
     askBtn.disabled = true;
@@ -728,6 +927,7 @@ async function askQuestion() {
             if (conversationHistory.length > 6) {
                 conversationHistory = conversationHistory.slice(-6);
             }
+            await persistActiveChatSession();
         }
     } catch (err) {
         bubble.innerHTML = `<span class="opacity-80">Error: ${esc(err.message)}</span>`;
