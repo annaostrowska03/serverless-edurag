@@ -31,7 +31,7 @@ resource "google_cloud_run_v2_service" "api_service" {
       }
       env {
       name  = "LLM_MODEL"
-      value = "gemini-3.1-flash-lite"
+      value = "gemini-2.5-flash"
     }
 	env {
   name  = "GOOGLE_CLOUD_REGION"
