@@ -325,6 +325,14 @@ function getChatTitle(messages) {
     return normalized.length > 36 ? `${normalized.slice(0, 36)}...` : normalized;
 }
 
+function getPersistedChatTitle(messages) {
+    const activeSession = activeChatId ? chatSessions[activeChatId] : null;
+    if (activeSession?.title_locked && activeSession.title) {
+        return activeSession.title;
+    }
+    return getChatTitle(messages);
+}
+
 function renderConversationHistory() {
     if (conversationHistory.length === 0) {
         chatHistory.innerHTML = getGreetingMarkup();
@@ -374,17 +382,39 @@ function renderChatSessionList() {
         const active = session.id === activeChatId;
         const safeId = JSON.stringify(session.id);
         return `
-        <button onclick='selectChatSession(${safeId})'
-                class="w-full text-left rounded-lg border px-3 py-2 transition ${
-                    active
-                        ? 'border-blue-200 bg-blue-50'
-                        : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'
-                }">
+        <div class="rounded-lg border px-3 py-2 transition ${
+            active
+                ? 'border-blue-200 bg-blue-50'
+                : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'
+        }">
+            <div class="flex items-start gap-2">
+                <button onclick='selectChatSession(${safeId})'
+                        class="flex-1 min-w-0 text-left">
             <div class="text-sm font-medium text-slate-700 truncate">${esc(session.title || 'New chat')}</div>
             <div class="text-[11px] text-slate-400 mt-1">
                 ${session.message_count || 0} messages${formatChatTimestamp(session.updated_at) ? ` · ${formatChatTimestamp(session.updated_at)}` : ''}
             </div>
-        </button>`;
+                </button>
+                <div class="flex items-center gap-1 flex-shrink-0">
+                    <button onclick='renameChatSession(${safeId}, event)'
+                            title="Rename chat"
+                            class="text-slate-300 hover:text-slate-500 transition p-1 rounded">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L12 15l-4 1 1-4 9.586-9.586z"/>
+                        </svg>
+                    </button>
+                    <button onclick='deleteChatSession(${safeId}, event)'
+                            title="Delete chat"
+                            class="text-slate-300 hover:text-red-400 transition p-1 rounded">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>`;
     }).join('');
 }
 
@@ -394,7 +424,8 @@ async function persistActiveChatSession() {
     const messages = conversationHistory.slice(-MAX_STORED_CHAT_MESSAGES);
     await getUserChatsCollection().doc(activeChatId).set(
         {
-            title: getChatTitle(messages),
+            title: getPersistedChatTitle(messages),
+            title_locked: Boolean(chatSessions[activeChatId]?.title_locked),
             messages,
             message_count: messages.length,
             updated_at: firebase.firestore.FieldValue.serverTimestamp(),
@@ -414,11 +445,45 @@ async function createNewChatSession() {
 
     await docRef.set({
         title: 'New chat',
+        title_locked: false,
         messages: [],
         message_count: 0,
         created_at: firebase.firestore.FieldValue.serverTimestamp(),
         updated_at: firebase.firestore.FieldValue.serverTimestamp(),
     });
+}
+
+async function renameChatSession(chatId, event) {
+    event?.stopPropagation();
+    const session = chatSessions[chatId];
+    if (!session) return;
+
+    const nextTitle = prompt('Rename chat', session.title || 'New chat');
+    if (nextTitle === null) return;
+
+    const trimmedTitle = nextTitle.trim();
+    if (!trimmedTitle) return;
+
+    await getUserChatsCollection().doc(chatId).set(
+        {
+            title: trimmedTitle,
+            title_locked: true,
+            updated_at: firebase.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+    );
+}
+
+async function deleteChatSession(chatId, event) {
+    event?.stopPropagation();
+    if (!confirm('Delete this chat?')) return;
+
+    await getUserChatsCollection().doc(chatId).delete();
+
+    if (activeChatId === chatId) {
+        activeChatId = null;
+        conversationHistory = [];
+    }
 }
 
 function selectChatSession(chatId) {
