@@ -31,6 +31,24 @@ The system is strictly divided into two decoupled workflows:
 * `/workers` - Cloud Run services for asynchronous PDF chunking and vectorization.
 * `/api` - Serverless functions for real-time chat inference.
 
+## Testing
+
+The project includes unit tests for both the API and the worker service. All external cloud and ML dependencies (Firebase, Firestore, GCS, ChromaDB, Vertex AI) are mocked — no real GCP credentials are needed to run tests.
+
+**Setup:**
+```bash
+pip install -r requirements-dev.txt
+```
+
+**Run all tests:**
+```bash
+pytest api/tests/ workers/tests/ -v
+```
+
+Test coverage:
+* `api/tests/` — 37 tests covering helper functions (`sanitize`, `normalize_reference_text`, `get_filename_aliases`, `get_referenced_doc_ids`) and all three endpoints (`/ask`, `/generate-upload-url`, `/documents/<id>`)
+* `workers/tests/` — 18 tests covering `parse_storage_path` and the full `process_document` handler (happy path, status progression, metadata injection, error handling, temp file cleanup)
+
 ## Team
 
 * [Anna Ostrowska](https://github.com/annaostrowska03)
