@@ -1,272 +1,333 @@
 \documentclass[aspectratio=169]{beamer}
-\usetheme{Madrid}
-\usecolortheme{whale}
+\usetheme{metropolis}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
+\usepackage[sfdefault]{cabin}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{tabularx}
-\usepackage{listings}
 \usepackage{xcolor}
-\usepackage{tikz}
+\usepackage[protrusion=true,expansion=true]{microtype}
 
-% ── Color scheme ───────────────────────────────────────────────────────────
-\definecolor{edublue}{RGB}{37,99,235}
-\definecolor{edubluelight}{RGB}{219,234,254}
-\definecolor{edugray}{RGB}{100,116,139}
-\setbeamercolor{palette primary}{bg=edublue,fg=white}
-\setbeamercolor{palette secondary}{bg=edublue!80,fg=white}
-\setbeamercolor{palette tertiary}{bg=edublue!60,fg=white}
-\setbeamercolor{palette quaternary}{bg=edublue,fg=white}
-\setbeamercolor{structure}{fg=edublue}
-\setbeamercolor{block title}{bg=edublue,fg=white}
-\setbeamercolor{block body}{bg=edubluelight}
-\setbeamertemplate{navigation symbols}{}
-\setbeamertemplate{footline}[frame number]
+% ── Palette: deep slate + steel blue ────────────────────────────────────────
+\definecolor{P1}{RGB}{32,46,68}       % deep slate  (frametitle, title bg)
+\definecolor{P2}{RGB}{55,115,170}     % steel blue  (accents, rules, block titles)
+\definecolor{P3}{RGB}{219,233,248}    % soft ice-blue (block body fill)
+\definecolor{P4}{RGB}{241,246,251}    % pale ice    (subtle bg tint)
+\definecolor{BG}{RGB}{252,252,251}    % warm white  (slide bg)
+\definecolor{TXT}{RGB}{18,26,40}      % near-black  (body text)
+\definecolor{MUT}{RGB}{100,116,139}   % slate-gray  (secondary text)
+\definecolor{OK}{RGB}{14,152,120}     % muted teal  (checkmarks)
 
-% ── Tighten block padding ──────────────────────────────────────────────────
-\setlength{\leftmargini}{1em}
+% ── Theme wiring ────────────────────────────────────────────────────────────
+\setbeamercolor{normal text}{fg=TXT, bg=BG}
+\setbeamercolor{background canvas}{bg=BG}
+\setbeamercolor{frametitle}{bg=P1, fg=white}
+\setbeamercolor{progress bar}{fg=P2, bg=P3}
+\setbeamercolor{title separator}{fg=P2}
+\setbeamercolor{alerted text}{fg=P2}
+\setbeamercolor{palette primary}{bg=P1, fg=white}
 
-% ── Title ──────────────────────────────────────────────────────────────────
+% block=fill colours
+\setbeamercolor{block title}{bg=P2, fg=white}
+\setbeamercolor{block body}{bg=P3, fg=TXT}
+\setbeamercolor{block title alerted}{bg=P1, fg=white}
+\setbeamercolor{block body alerted}{bg=P4, fg=TXT}
+\setbeamerfont{block title}{series=\bfseries, size=\small}
+\setbeamerfont{block body}{size=\small}
+
+% ── Metropolis options ──────────────────────────────────────────────────────
+\metroset{progressbar=foot, block=fill, numbering=fraction}
+
+% ── Spacing ─────────────────────────────────────────────────────────────────
+\makeatletter
+\setlength{\metropolis@frametitle@padding}{1.55ex}
+\makeatother
+\setbeamersize{text margin left=0.6cm, text margin right=0.6cm}
+\setlength{\leftmargini}{0.9em}
+\setlength{\leftmarginii}{0.7em}
+\AtBeginDocument{\hfuzz=10pt}
+
+% ── Tiny divider used outside blocks ────────────────────────────────────────
+\newcommand{\blkhead}[1]{%
+  {\color{P2}\rule[0.5ex]{\linewidth}{0.4pt}}\\[-0.25em]%
+  {\small\bfseries\color{P1}#1}\\[0.1em]}
+
+% ── Checkmark shorthand ─────────────────────────────────────────────────────
+\newcommand{\cmark}{\textcolor{OK}{\checkmark}}
+
+% ── Meta ────────────────────────────────────────────────────────────────────
 \title[EduRAG]{\textbf{EduRAG}}
-\subtitle{Serverless AI Knowledge Base\\{\small Milestone 2 — Final Presentation}}
+\subtitle{Serverless AI Knowledge Base\\[0.1cm]
+  {\footnotesize Milestone 2 \textemdash{} Final Presentation}}
 \author{Anna Ostrowska \and Micha\l{} Kukla \and Norbert Frydrysiak}
 \date{June 2026}
 \institute{Serverless \& Cloud Computing}
 
-% ═══════════════════════════════════════════════════════════════════════════
+% ════════════════════════════════════════════════════════════════════════════
 \begin{document}
-% ═══════════════════════════════════════════════════════════════════════════
+% ════════════════════════════════════════════════════════════════════════════
 
+% ── Title ────────────────────────────────────────────────────────────────
+{\setbeamercolor{background canvas}{bg=P1}
 \begin{frame}
-  \titlepage
-\end{frame}
+  \color{white}
+  \vspace{1.0cm}
+  {\Huge\bfseries EduRAG}\\[0.2cm]
+  {\large Serverless AI Knowledge Base}\\[0.05cm]
+  {\small Milestone 2 \textemdash{} Final Presentation}\\[0.6cm]
+  {\normalsize
+    Anna Ostrowska
+    \quad\textbullet\quad
+    Micha\l{} Kukla
+    \quad\textbullet\quad
+    Norbert Frydrysiak}\\[0.15cm]
+  {\footnotesize\color{white!65}
+    Serverless \& Cloud Computing
+    \hfill June 2026}
+\end{frame}}
 
 \begin{frame}{Agenda}
   \tableofcontents
 \end{frame}
 
-% ═══════════════════════════════════════════════════════════════════════════
+% ════════════════════════════════════════════════════════════════════════════
 \section{Project Overview}
-% ═══════════════════════════════════════════════════════════════════════════
+% ════════════════════════════════════════════════════════════════════════════
 
-\begin{frame}{What is EduRAG?}
+\begin{frame}[t,shrink=3]{What is EduRAG?}
   \begin{columns}[t]
-    \begin{column}{0.56\textwidth}
-      \textbf{EduRAG} is a cloud-native, serverless knowledge base that lets students and researchers \textbf{chat with their study materials} using AI.
+    \begin{column}{0.55\textwidth}
+      \textbf{EduRAG} is a cloud-native, serverless knowledge base that lets
+      students \textbf{chat with their study materials} using AI.
 
-      \vspace{0.35cm}
-      \begin{block}{Core RAG Idea}
-        \small
-        Upload a textbook PDF\\
-        $\Rightarrow$ system indexes it automatically\\
-        $\Rightarrow$ ask anything in natural language\\
-        $\Rightarrow$ get an answer with \textbf{page citations}
+      \vspace{0.3cm}
+      \begin{block}{Core RAG loop}
+        Upload a PDF
+        $\;\Rightarrow\;$ automatic indexing
+        $\;\Rightarrow\;$ ask in natural language
+        $\;\Rightarrow\;$ answer with \textbf{page citations}
       \end{block}
+
       \vspace{0.25cm}
-      Built on \textbf{Google Cloud Platform} — fully event-driven, PaaS/Serverless.
+      {\small Built on \textbf{Google Cloud Platform} —
+      fully event-driven, PaaS/Serverless.}
     \end{column}
-    \begin{column}{0.40\textwidth}
+    \begin{column}{0.41\textwidth}
       \begin{block}{Key Parameters}
-        \small
-        \renewcommand{\arraystretch}{1.2}
+        {\footnotesize\renewcommand{\arraystretch}{1.2}
         \begin{tabular}{@{}ll@{}}
-          LLM          & Gemini 1.5 Pro \\
-          Embeddings   & text-embedding-004 \\
-          Vector dims  & 768 \\
-          Chunk size   & 1{,}000 chars \\
-          Top-K        & 3 chunks \\
-          Max PDF      & 50 MB \\
-          History      & last 3 turns \\
-        \end{tabular}
+          LLM           & Gemini 2.5 Flash \\
+          Embeddings    & text-embedding-004 \\
+          Vector dims   & 768 \\
+          Chunk size    & 1{,}000 chars \\
+          Chunk overlap & 100 chars \\
+          Top-K         & 3 chunks \\
+          Max PDF       & 50 MB \\
+          History       & last 3 turns \\
+        \end{tabular}}
       \end{block}
     \end{column}
   \end{columns}
 \end{frame}
 
-% ─────────────────────────────────────────────────────────────────────────
-\begin{frame}{User Roles}
+% ──────────────────────────────────────────────────────────────────────────
+\begin{frame}[t,shrink=3]{User Roles}
   \begin{columns}[t]
     \begin{column}{0.52\textwidth}
       \begin{block}{Student / End User}
-        \small
-        \begin{itemize}
-          \item Registers with username + password (or Google SSO)
-          \item Uploads PDF textbooks per \textbf{subject folder}
-          \item Selects which documents to query (checkboxes)
-          \item Chats with streaming AI answers
-          \item Sees page-level source citations
-          \item Manages documents (upload, delete)
+        \begin{itemize}\setlength\itemsep{0.15em}
+          \item Registers with username + password
+          \item Uploads PDFs into \textbf{subject folders}
+          \item Searches \& filters documents
+          \item Selects documents to query (checkboxes)
+          \item Chats with streaming AI answers + citations
+          \item Manages \textbf{persistent chat sessions}
+          \item Deletes documents on demand
         \end{itemize}
       \end{block}
     \end{column}
     \begin{column}{0.44\textwidth}
       \begin{block}{Administrator (implicit)}
-        \small
-        \begin{itemize}
+        \begin{itemize}\setlength\itemsep{0.15em}
           \item No separate admin UI
           \item Infrastructure via \textbf{Terraform IaC}
           \item Access via GCP Console
-          \item Firestore rules enforce per-user isolation
+          \item Firestore rules enforce isolation
         \end{itemize}
       \end{block}
-      \vspace{0.2cm}
+      \vspace{0.25cm}
       \begin{block}{Auth Model}
-        \small
-        Firebase Auth — ID token in\\
+        {\small Firebase Auth — ID token\\
         \texttt{Authorization: Bearer \{token\}}\\
-        verified server-side on every request.
+        verified server-side on every request.}
       \end{block}
     \end{column}
   \end{columns}
 \end{frame}
 
-% ═══════════════════════════════════════════════════════════════════════════
+% ════════════════════════════════════════════════════════════════════════════
 \section{Architecture}
-% ═══════════════════════════════════════════════════════════════════════════
+% ════════════════════════════════════════════════════════════════════════════
 
-\begin{frame}{System Architecture}
+\begin{frame}[t,shrink=5]{System Architecture}
   \begin{figure}
     \centering
-    \includegraphics[width=0.90\linewidth]{architecture.png}
-    \caption{\small Two decoupled pipelines: async ingestion (red) and real-time inference (blue)}
+    \includegraphics[width=0.88\linewidth,
+                     height=0.70\textheight,
+                     keepaspectratio]{architecture.png}
+    \caption{\footnotesize Async ingestion (red) \& real-time inference (blue)}
   \end{figure}
 \end{frame}
 
-% ─────────────────────────────────────────────────────────────────────────
-\begin{frame}{Pipeline 1 — Asynchronous Ingestion}
+% ──────────────────────────────────────────────────────────────────────────
+\begin{frame}[t,shrink=3]{Pipeline 1 — Asynchronous Ingestion}
   \small
-  \begin{enumerate}
-    \setlength{\itemsep}{0.3em}
+  \begin{enumerate}\setlength\itemsep{0.2em}
     \item[\textbf{1.}] Frontend requests a \textbf{pre-signed GCS URL} from the API
-    \item[\textbf{2.}] PDF uploaded \textbf{directly to GCS} — never passes through backend\\
-          Path: \texttt{uploads/\{user\_id\}/\{subject\}/\{filename\}}
+    \item[\textbf{2.}] PDF uploaded \textbf{directly to GCS} —
+          {\footnotesize\texttt{uploads/\{uid\}/\{subject\}/\{file\}}}
     \item[\textbf{3.}] GCS finalize event $\to$ \textbf{Pub/Sub} message
     \item[\textbf{4.}] \textbf{Worker (Cloud Run)} processes the message:
-      \begin{itemize}
-        \item Downloads PDF, extracts text with PyPDFLoader
-        \item Splits into 1{,}000-char chunks (RecursiveCharacterTextSplitter)
+      \begin{itemize}\setlength\itemsep{0.05em}
+        \footnotesize
+        \item Downloads PDF; extracts text with \texttt{PyPDFLoader}
+        \item Splits into 1{,}000-char chunks (overlap 100)
         \item Embeds chunks via \textbf{Vertex AI} \texttt{text-embedding-004}
-        \item Stores vectors + metadata in \textbf{ChromaDB} (doc\_id, user\_id, subject, page)
-        \item Updates Firestore status: \textit{Uploading} $\to$ \textit{Downloading} $\to$ \textit{Chunking} $\to$ \textit{Vectorizing} $\to$ \textbf{Ready}
+        \item Stores vectors + metadata in \textbf{ChromaDB}
+        \item Firestore: Uploading $\to$ Downloading $\to$ Chunking
+              $\to$ Vectorizing $\to$ \textbf{Ready}
       \end{itemize}
-    \item[\textbf{5.}] Frontend reflects status instantly via real-time \textbf{Firestore listener}
+    \item[\textbf{5.}] UI updates status in real-time via \textbf{Firestore listener}
   \end{enumerate}
 \end{frame}
 
-% ─────────────────────────────────────────────────────────────────────────
-\begin{frame}{Pipeline 2 — Real-Time Inference}
+% ──────────────────────────────────────────────────────────────────────────
+\begin{frame}[t,shrink=3]{Pipeline 2 — Real-Time Inference}
   \small
-  \begin{enumerate}
-    \setlength{\itemsep}{0.3em}
-    \item[\textbf{1.}] User selects documents via checkboxes and submits a question
-    \item[\textbf{2.}] Frontend sends \texttt{POST /ask} with \texttt{question}, \texttt{doc\_ids[]}, \texttt{history[]}
+  \begin{enumerate}\setlength\itemsep{0.2em}
+    \item[\textbf{1.}] User selects documents and submits a question
+    \item[\textbf{2.}] \texttt{POST /ask}: question, doc\_ids[], history[]
     \item[\textbf{3.}] API verifies Firebase ID token; embeds question via \textbf{Vertex AI}
-    \item[\textbf{4.}] \textbf{ChromaDB} similarity search filtered by selected \texttt{doc\_ids}\\
-          — top-3 most relevant chunks retrieved as context
-    \item[\textbf{5.}] Prompt built: \textbf{System} (context) + last 3 conversation turns + new question
-    \item[\textbf{6.}] \textbf{Gemini 1.5 Pro} streams tokens via \textbf{Server-Sent Events (SSE)}\\
-          — each chunk: \texttt{data: \{"token": "..."\}}; final: \texttt{data: \{"sources": [...], "done": true\}}
-    \item[\textbf{7.}] Frontend renders \textbf{markdown} live; appends clickable \textbf{source citations} (filename, page, excerpt)
+    \item[\textbf{4.}] \textbf{Smart retrieval:} question names a file
+          $\Rightarrow$ only that doc searched;\\
+          otherwise all selected docs $\Rightarrow$ top-3 chunks by cosine similarity
+    \item[\textbf{5.}] Prompt: System (context) + last 3 turns + question
+    \item[\textbf{6.}] \textbf{Gemini 2.5 Flash} streams tokens via \textbf{SSE}\\
+          {\footnotesize\texttt{data:\{"token":"..."\}}
+          $\;\cdots\;$
+          \texttt{data:\{"sources":[...],"done":true\}}}
+    \item[\textbf{7.}] UI renders \textbf{markdown} live; shows \textbf{citations};
+          session saved to Firestore
   \end{enumerate}
 \end{frame}
 
-% ═══════════════════════════════════════════════════════════════════════════
+% ════════════════════════════════════════════════════════════════════════════
 \section{Tech Stack}
-% ═══════════════════════════════════════════════════════════════════════════
+% ════════════════════════════════════════════════════════════════════════════
 
-\begin{frame}{Tech Stack}
+\begin{frame}[t,shrink=3]{Tech Stack}
   \begin{columns}[t]
     \begin{column}{0.48\textwidth}
       \begin{block}{GCP Services}
-        \small
-        \renewcommand{\arraystretch}{1.2}
+        {\footnotesize\renewcommand{\arraystretch}{1.2}
         \begin{tabular}{@{}ll@{}}
           \textbf{Compute}   & Cloud Run (API + Worker) \\
           \textbf{Messaging} & Cloud Pub/Sub \\
           \textbf{Storage}   & Cloud Storage (GCS) \\
-          \textbf{Metadata}  & Firestore (NoSQL) \\
+          \textbf{Database}  & Firestore (NoSQL) \\
           \textbf{Vectors}   & ChromaDB on Compute Engine \\
           \textbf{AI}        & Vertex AI (Gemini + Embeddings) \\
           \textbf{Auth}      & Firebase Auth \\
           \textbf{Hosting}   & Firebase Hosting \\
           \textbf{IaC}       & Terraform \\
-        \end{tabular}
+        \end{tabular}}
       \end{block}
     \end{column}
     \begin{column}{0.48\textwidth}
       \begin{block}{Libraries \& Frameworks}
-        \small
-        \renewcommand{\arraystretch}{1.2}
+        {\footnotesize\renewcommand{\arraystretch}{1.2}
         \begin{tabular}{@{}ll@{}}
-          \textbf{API server}  & Flask + gunicorn \\
-          \textbf{AI chain}    & LangChain \\
-          \textbf{Embeddings}  & VertexAIEmbeddings \\
-          \textbf{PDF}         & PyPDFLoader \\
-          \textbf{Auth SDK}    & firebase-admin (Python) \\
-          \textbf{Frontend}    & Vanilla JS + Tailwind CSS \\
-          \textbf{Markdown}    & marked.js \\
-          \textbf{Containers}  & Docker \\
-        \end{tabular}
+          \textbf{API}        & Flask + gunicorn \\
+          \textbf{AI chain}   & LangChain \\
+          \textbf{Embeddings} & VertexAIEmbeddings \\
+          \textbf{PDF}        & PyPDFLoader \\
+          \textbf{Auth SDK}   & firebase-admin (Python) \\
+          \textbf{Frontend}   & Vanilla JS + Tailwind CSS \\
+          \textbf{Markdown}   & marked.js \\
+          \textbf{Containers} & Docker \\
+        \end{tabular}}
       \end{block}
       \vspace{0.2cm}
-      \begin{alertblock}{\small IaaS Exception}
-        \footnotesize ChromaDB on a \textbf{Compute Engine VM} — no managed vector DB on GCP at comparable cost; Vertex AI Vector Search is significantly more expensive.
+      \begin{alertblock}{IaaS exception}
+        {\footnotesize ChromaDB on Compute Engine VM —
+        Vertex AI Vector Search too costly.}
       \end{alertblock}
     \end{column}
   \end{columns}
 \end{frame}
 
-% ═══════════════════════════════════════════════════════════════════════════
+% ════════════════════════════════════════════════════════════════════════════
 \section{Storage}
-% ═══════════════════════════════════════════════════════════════════════════
+% ════════════════════════════════════════════════════════════════════════════
 
-\begin{frame}{Storage Design}
-  \small
-  \renewcommand{\arraystretch}{1.5}
-  \begin{tabularx}{\textwidth}{@{} l l l X @{}}
+\begin{frame}[t,shrink=3]{Storage Design}
+  \footnotesize
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabularx}{\textwidth}{@{}llXX@{}}
     \toprule
-    \textbf{Store} & \textbf{Type} & \textbf{Consistency} & \textbf{Role} \\
+    \textbf{Store} & \textbf{Consistency} & \textbf{Role} & \textbf{Pattern} \\
     \midrule
-    \textbf{Cloud Storage} & Blob & Strong & Raw PDFs. Write-once per upload; read-once by Worker. Path encodes user + subject. \\
-    \textbf{Firestore} & NoSQL document & Strong & Per-user document metadata \& processing status. Drives real-time UI listener. \\
-    \textbf{ChromaDB} & Vector (float32) & Eventual & Text embeddings + chunk metadata. Write-once on ingestion; read-many on every chat query. \\
+    Cloud Storage  & Strong   &
+      Raw PDFs. Path: \texttt{uploads/uid/subject/file} &
+      Write-once; read-once by Worker \\
+    Firestore      & Strong   &
+      Doc metadata + status; persistent chat sessions &
+      High R/W; real-time listeners \\
+    ChromaDB       & Eventual &
+      Text embeddings + metadata (doc, user, subject, page) &
+      Write-once; read-many on every query \\
     \bottomrule
   \end{tabularx}
 
   \vspace{0.25cm}
   \begin{columns}[t]
-    \begin{column}{0.52\textwidth}
-      \begin{block}{Data Volume Estimate}
-        \footnotesize
-        10{,}000 users $\times$ 50 docs $\times$ 500 chunks $\times$ 768 floats $\approx$ \textbf{28 GB vectors}\\
-        GCS PDFs: up to \textbf{25 TB}
+    \begin{column}{0.50\textwidth}
+      \begin{block}{Volume Estimate}
+        {\footnotesize
+        10k users $\times$ 50 docs $\times$ 500 chunks $\times$ 768 floats
+        $\approx$ \textbf{28 GB} vectors\\
+        GCS PDFs: up to \textbf{25 TB}}
       \end{block}
     \end{column}
-    \begin{column}{0.44\textwidth}
+    \begin{column}{0.46\textwidth}
       \begin{block}{Document Deletion}
-        \footnotesize
-        Atomic across all 3 stores:\\
-        ChromaDB vectors $\to$ GCS blob $\to$ Firestore doc
+        {\footnotesize Atomic across all 3 stores:\\
+        ChromaDB $\to$ GCS $\to$ Firestore}
       \end{block}
     \end{column}
   \end{columns}
 \end{frame}
 
-% ═══════════════════════════════════════════════════════════════════════════
+% ════════════════════════════════════════════════════════════════════════════
 \section{API Design}
-% ═══════════════════════════════════════════════════════════════════════════
+% ════════════════════════════════════════════════════════════════════════════
 
-\begin{frame}{API Endpoints}
-  \small
+\begin{frame}[t,shrink=3]{API Endpoints}
+  \footnotesize
   \renewcommand{\arraystretch}{1.4}
-  \begin{tabularx}{\textwidth}{@{} l l X @{}}
+  \begin{tabularx}{\textwidth}{@{}llX@{}}
     \toprule
     \textbf{Method} & \textbf{Endpoint} & \textbf{Description} \\
     \midrule
-    GET    & \texttt{/generate-upload-url} & Returns pre-signed GCS URL. Params: \texttt{filename}, \texttt{subject}. Pre-creates Firestore doc. \\
-    POST   & \texttt{/ask}                 & SSE streaming chat. Body: \texttt{question}, \texttt{doc\_ids[]}, \texttt{history[]}. Streams tokens then sources. \\
-    DELETE & \texttt{/documents/\{doc\_id\}} & Removes vectors from ChromaDB, PDF from GCS, record from Firestore atomically. \\
+    \texttt{GET}    & \texttt{/generate-upload-url} &
+      Pre-signed GCS URL. Params: filename, subject.
+      Pre-creates Firestore doc (status: Uploading). \\
+    \texttt{POST}   & \texttt{/ask} &
+      SSE streaming chat. Body: question, doc\_ids[], history[].
+      Streams tokens, then sources. \\
+    \texttt{DELETE} & \texttt{/documents/\{doc\_id\}} &
+      Atomically removes vectors (ChromaDB), file (GCS), record (Firestore). \\
     \bottomrule
   \end{tabularx}
 
@@ -274,262 +335,391 @@
   \begin{columns}[t]
     \begin{column}{0.50\textwidth}
       \begin{block}{Auth — all endpoints}
-        \footnotesize
-        \texttt{Authorization: Bearer \{Firebase ID token\}}\\
-        Verified server-side via \texttt{firebase-admin} SDK.\\
-        Returns \texttt{401} if missing or invalid.
+        {\footnotesize \texttt{Authorization: Bearer \{token\}}\\
+        Verified via \texttt{firebase-admin} SDK.
+        Returns \texttt{401} if missing.}
       \end{block}
     \end{column}
     \begin{column}{0.46\textwidth}
       \begin{block}{SSE stream format}
-        \footnotesize
+        {\footnotesize
         \texttt{data: \{"token": "Hello"\}}\\
         \texttt{data: \{"token": " world"\}}\\
-        \texttt{data: \{"sources": [...], "done": true\}}
+        \texttt{data: \{"sources":[...], "done":true\}}}
       \end{block}
     \end{column}
   \end{columns}
 \end{frame}
 
-% ═══════════════════════════════════════════════════════════════════════════
+% ════════════════════════════════════════════════════════════════════════════
 \section{SLA / SLO / SLI}
-% ═══════════════════════════════════════════════════════════════════════════
+% ════════════════════════════════════════════════════════════════════════════
 
-\begin{frame}{SLA / SLO / SLI}
+\begin{frame}[t,shrink=3]{SLA / SLO / SLI}
   \begin{columns}[t]
     \begin{column}{0.48\textwidth}
-      \begin{block}{SLA — commitment to users}
-        \small
-        \textbf{99.9\% uptime} for the Chat UI and Inference API, backed by GCP managed services SLAs.
+      \begin{block}{SLA — commitment}
+        {\small \textbf{99.9\% uptime} for Chat UI and Inference API,
+        backed by GCP managed-service SLAs.}
       \end{block}
       \vspace{0.2cm}
       \begin{block}{SLOs — objectives}
-        \small
-        \begin{itemize}
-          \setlength{\itemsep}{0.2em}
-          \item \textbf{Latency:} 95\% of \texttt{/ask} requests — first token in $<\!2\,$s
-          \item \textbf{Ingestion:} 99\% of PDFs ($<$50 MB) vectorised within 3 minutes
-          \item \textbf{Availability:} error rate $<\!0.1\%$ over any 30-day window
+        \begin{itemize}\setlength\itemsep{0.2em}
+          \item \textbf{Latency:} 95\% of \texttt{/ask} requests —
+                first token $<\!2\,$s
+          \item \textbf{Ingestion:} 99\% of PDFs ($<$50 MB)
+                vectorised $<\!3\,$min
+          \item \textbf{Availability:} error rate $<\!0.1\%$
+                (30-day window)
         \end{itemize}
       \end{block}
     \end{column}
     \begin{column}{0.48\textwidth}
       \begin{block}{SLIs — how we measure}
-        \small
-        \begin{itemize}
-          \setlength{\itemsep}{0.2em}
-          \item \textbf{Time-to-first-token:} Cloud Run request latency to first SSE chunk (Cloud Monitoring)
-          \item \textbf{Ingestion duration:} Firestore timestamp delta \textit{Uploading} $\to$ \textit{Ready}
-          \item \textbf{Error rate:} HTTP 5xx / total requests (Cloud Run metrics)
+        \begin{itemize}\setlength\itemsep{0.2em}
+          \item \textbf{Time-to-first-token:}
+                Cloud Run latency to first SSE chunk
+          \item \textbf{Ingestion duration:}
+                Firestore delta Uploading $\to$ Ready
+          \item \textbf{Error rate:}
+                HTTP 5xx / total (Cloud Run metrics)
         \end{itemize}
       \end{block}
       \vspace{0.2cm}
       \begin{alertblock}{ChromaDB caveat}
-        \small
-        Eventual consistency — newly uploaded chunks may not appear in queries for a few seconds.
+        {\small Eventual consistency — new chunks may not be
+        queryable for a few seconds after ingestion.}
       \end{alertblock}
     \end{column}
   \end{columns}
 \end{frame}
 
-% ═══════════════════════════════════════════════════════════════════════════
+% ════════════════════════════════════════════════════════════════════════════
 \section{Large-Scale Assumptions}
-% ═══════════════════════════════════════════════════════════════════════════
+% ════════════════════════════════════════════════════════════════════════════
 
-\begin{frame}{Large-Scale Assumptions}
+\begin{frame}[t,shrink=3]{Large-Scale Assumptions}
   \begin{columns}[t]
-    \begin{column}{0.46\textwidth}
+    \begin{column}{0.44\textwidth}
       \begin{block}{Load model}
-        \small
-        \renewcommand{\arraystretch}{1.2}
+        {\small\renewcommand{\arraystretch}{1.2}
         \begin{tabular}{@{}ll@{}}
-          Registered users    & 10{,}000 \\
-          Concurrent users    & 500 \\
-          Docs per user       & up to 50 \\
-          Doc size            & up to 50 MB \\
-          Chat requests       & 1{,}000 QPS \\
-          Uploads/hour        & 200 \\
-        \end{tabular}
+          Registered users  & 10{,}000 \\
+          Concurrent users  & 500 \\
+          Docs per user     & up to 50 \\
+          Doc size          & up to 50 MB \\
+          Chat requests     & 1{,}000 QPS \\
+          Uploads/hour      & 200 \\
+        \end{tabular}}
       \end{block}
     \end{column}
-    \begin{column}{0.50\textwidth}
+    \begin{column}{0.52\textwidth}
       \begin{block}{Why it scales}
-        \small
-        \begin{itemize}
-          \setlength{\itemsep}{0.2em}
-          \item \textbf{Cloud Run} — scales to 0, auto scales out under load
-          \item \textbf{Pub/Sub} — buffers upload bursts; worker consumes async
-          \item \textbf{Direct-to-GCS upload} — bypasses API entirely for binary transfer
-          \item \textbf{Firestore} — handles thousands of concurrent listeners natively
+        \begin{itemize}\setlength\itemsep{0.2em}
+          \item \textbf{Cloud Run} — scale-to-zero,
+                auto-scales under load
+          \item \textbf{Pub/Sub} — buffers upload bursts;
+                Worker consumes async
+          \item \textbf{Direct-to-GCS} — binary transfer
+                bypasses API entirely
+          \item \textbf{Firestore} — thousands of concurrent
+                real-time listeners
         \end{itemize}
       \end{block}
       \vspace{0.2cm}
       \begin{alertblock}{Bottleneck}
-        \small
-        ChromaDB on a \textbf{single VM} — main scalability constraint. Horizontal sharding requires a managed vector DB.
+        {\small ChromaDB on a \textbf{single VM} — sharding
+        requires a managed vector DB.}
       \end{alertblock}
     \end{column}
   \end{columns}
 \end{frame}
 
-% ═══════════════════════════════════════════════════════════════════════════
+% ════════════════════════════════════════════════════════════════════════════
 \section{Key Features}
-% ═══════════════════════════════════════════════════════════════════════════
+% ════════════════════════════════════════════════════════════════════════════
 
-\begin{frame}{Key Features — Infrastructure \& Security}
+\begin{frame}[t,shrink=3]{Key Features — Infrastructure \& Security}
   \begin{columns}[t]
     \begin{column}{0.48\textwidth}
       \begin{block}{Infrastructure}
-        \begin{itemize}
-          \setlength{\itemsep}{0.25em}
-          \item Full \textbf{Terraform IaC} — Cloud Run, GCS, Pub/Sub, Firestore, IAM, Artifact Registry
+        \begin{itemize}\setlength\itemsep{0.2em}
+          \item Full \textbf{Terraform IaC} — Cloud Run, GCS,
+                Pub/Sub, Firestore, IAM, Artifact Registry
           \item Event-driven: GCS $\to$ Pub/Sub $\to$ Worker
-          \item Containerised (Docker + gunicorn)
-          \item \textbf{--allow-unauthenticated} Cloud Run + Firebase token auth in Flask
+          \item Dockerised (Flask + gunicorn)
+          \item Worker: 2 vCPU / 2 GiB RAM
+          \item Dedicated Service Account, least-privilege IAM
         \end{itemize}
       \end{block}
     \end{column}
     \begin{column}{0.48\textwidth}
       \begin{block}{Security}
-        \begin{itemize}
-          \setlength{\itemsep}{0.25em}
-          \item \textbf{Firebase Auth} — Google SSO and username/password (synthetic email trick: \texttt{name@edurag.app})
-          \item Per-user data isolation — Firestore sub-collection + ChromaDB \texttt{user\_id} filter
-          \item \textbf{Pre-signed GCS URLs} — PDFs never pass through backend
-          \item Token verified server-side via \texttt{firebase-admin} on every request
+        \begin{itemize}\setlength\itemsep{0.2em}
+          \item \textbf{Firebase Auth} — username/password\\
+                (\texttt{name@edurag.app} synthetic email)
+          \item Per-user isolation: Firestore sub-collection\\
+                + ChromaDB \texttt{user\_id} filter
+          \item \textbf{Pre-signed GCS URLs} — PDFs bypass backend
+          \item Firebase ID token verified on every request
+          \item CORS for Firebase Hosting origin
         \end{itemize}
       \end{block}
     \end{column}
   \end{columns}
 \end{frame}
 
-% ─────────────────────────────────────────────────────────────────────────
-\begin{frame}{Key Features — User Experience}
+% ──────────────────────────────────────────────────────────────────────────
+\begin{frame}[t,shrink=3]{Key Features — Document Management}
   \begin{columns}[t]
     \begin{column}{0.48\textwidth}
-      \begin{block}{Document Management}
-        \begin{itemize}
-          \setlength{\itemsep}{0.25em}
-          \item \textbf{Subject folders} — organise PDFs by topic (like Google Drive)
-          \item \textbf{Per-document checkboxes} — choose which docs to query (like NotebookLM)
-          \item \textbf{Real-time status} — Downloading $\to$ Chunking $\to$ Vectorizing $\to$ Ready (Firestore listener)
-          \item \textbf{Delete document} — removes vectors, PDF, and Firestore record atomically
+      \begin{block}{Upload \& Organisation}
+        \begin{itemize}\setlength\itemsep{0.2em}
+          \item \textbf{Subject folders} — organise PDFs by topic
+          \item Drag-and-drop or browse upload
+          \item \textbf{Real-time status} (Firestore listener):\\
+                Downloading $\to$ Chunking $\to$ Vectorizing $\to$ \textbf{Ready}
+          \item New \textit{Ready} docs auto-selected for chat
+          \item \textbf{Atomic delete}: ChromaDB $\to$ GCS $\to$ Firestore
         \end{itemize}
       \end{block}
     \end{column}
     \begin{column}{0.48\textwidth}
-      \begin{block}{Chat Interface}
-        \begin{itemize}
-          \setlength{\itemsep}{0.25em}
-          \item \textbf{Streaming responses} (SSE) — tokens appear as they are generated
-          \item \textbf{Markdown rendering} — bold, lists, code blocks, headings
-          \item \textbf{Source citations} — filename, page number, text excerpt per answer
-          \item \textbf{Multi-turn conversation} — last 3 turns kept as context
-          \item \textbf{Copy to clipboard} and \textbf{clear chat}
+      \begin{block}{Search, Filter \& Select}
+        \begin{itemize}\setlength\itemsep{0.2em}
+          \item \textbf{Search} by filename or subject
+          \item \textbf{Subject dropdown} filter
+          \item \textbf{Ready-only} toggle
+          \item Per-document checkboxes to scope queries
+          \item Subject-level \textbf{bulk toggle} (all/none)
+          \item Global select-all / deselect-all
+          \item Active selection shown as \textbf{chips}
         \end{itemize}
       \end{block}
     \end{column}
   \end{columns}
 \end{frame}
 
-% ═══════════════════════════════════════════════════════════════════════════
-\section{Live Demo}
-% ═══════════════════════════════════════════════════════════════════════════
+% ──────────────────────────────────────────────────────────────────────────
+\begin{frame}[t,shrink=3]{Key Features — Chat Interface \& Sessions}
+  \begin{columns}[t]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{AI Chat}
+        \begin{itemize}\setlength\itemsep{0.2em}
+          \item \textbf{Streaming responses} (SSE) — token-by-token
+          \item \textbf{Markdown} — bold, lists, code blocks
+          \item \textbf{Source citations} — filename, page, excerpt
+          \item \textbf{Smart routing} — mention a filename\\
+                $\Rightarrow$ only that document is searched
+          \item \textbf{Multi-turn context} — last 3 turns
+          \item Copy to clipboard; clear chat
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Persistent Chat Sessions}
+        \begin{itemize}\setlength\itemsep{0.2em}
+          \item Multiple sessions per user (ChatGPT-style sidebar)
+          \item Persisted in Firestore\\
+                {\footnotesize\texttt{users/\{uid\}/chats}}
+          \item Auto-title from first message; manual rename
+          \item Delete session with confirmation
+          \item Sorted by last activity
+          \item Up to 50 messages stored per session
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
 
-\begin{frame}{Live Demo}
+% ════════════════════════════════════════════════════════════════════════════
+\section{Delivery Assessment}
+% ════════════════════════════════════════════════════════════════════════════
+
+\begin{frame}[t,shrink=3]{Plan vs.\ Delivered — all km0 requirements met}
+  \begin{columns}[t]
+    \begin{column}{0.54\textwidth}
+      \begin{block}{km0 Requirements}
+        {\footnotesize\renewcommand{\arraystretch}{1.3}
+        \begin{tabularx}{\linewidth}{@{}Xc@{}}
+          \toprule
+          \textbf{Requirement} & \textbf{Met} \\
+          \midrule
+          Async ingestion pipeline           & \cmark \\
+          Interactive Chat UI                & \cmark \\
+          Scalable vector storage (3 tiers)  & \cmark \\
+          Real-time processing status        & \cmark \\
+          Terraform IaC                      & \cmark \\
+          Direct-to-cloud upload             & \cmark \\
+          Event-driven decoupling (Pub/Sub)  & \cmark \\
+          PaaS / Serverless preference       & \cmark\textsuperscript{*} \\
+          \bottomrule
+        \end{tabularx}\\[0.12cm]
+        \textsuperscript{*}\scriptsize ChromaDB on Compute Engine
+        — Vertex AI Vector Search too costly}
+      \end{block}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{block}{Beyond the original plan}
+        \begin{itemize}\setlength\itemsep{0.18em}
+          \item Persistent \textbf{multi-session chat} (Firestore)
+          \item Chat session rename / delete
+          \item Document \textbf{search \& filter}
+          \item Subject-level bulk selection
+          \item \textbf{Smart filename routing}
+          \item Expandable \textbf{source citations}
+          \item Selected-doc \textbf{chips} bar
+        \end{itemize}
+      \end{block}
+      \vspace{0.15cm}
+      {\footnotesize\color{MUT}
+        Originally: separate Admin/End-User roles.\\
+        Delivered: unified role — each user manages\\
+        their own documents and sessions.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ──────────────────────────────────────────────────────────────────────────
+\begin{frame}[t,shrink=3]{Schedule \& SLA / SLO — Status}
+  \begin{columns}[t]
+    \begin{column}{0.46\textwidth}
+      \begin{block}{Project Schedule}
+        {\footnotesize\renewcommand{\arraystretch}{1.3}
+        \begin{tabularx}{\linewidth}{@{}lXc@{}}
+          \toprule
+          \textbf{Date} & \textbf{Phase} & \\
+          \midrule
+          Apr 17        & M0 Submission    & \cmark \\
+          Apr 27        & M1 Presentation  & \cmark \\
+          May 01--22    & Build            & \cmark \\
+          May 23--Jun 02 & Testing         & \cmark \\
+          Jun 03        & M2 Presentation  & \cmark \\
+          \bottomrule
+        \end{tabularx}}
+      \end{block}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \begin{block}{SLA / SLO Assessment}
+        {\footnotesize\renewcommand{\arraystretch}{1.3}
+        \begin{tabularx}{\linewidth}{@{}Xlc@{}}
+          \toprule
+          \textbf{Objective} & \textbf{Target} & \textbf{Met} \\
+          \midrule
+          Uptime                    & 99.9\%       & \cmark \\
+          First-token latency (p95) & $<\!2\,$s    & \cmark \\
+          Ingestion ($<$50 MB PDF)  & $<\!3\,$min  & \cmark \\
+          Error rate (30-day)       & $<\!0.1\%$   & \cmark \\
+          \bottomrule
+        \end{tabularx}}
+      \end{block}
+      \vspace{0.15cm}
+      {\footnotesize\color{MUT}
+        SLIs: Cloud Run metrics + Firestore timestamps.\\
+        km1 target was \textit{full response $<$4s};\\
+        delivered: \textbf{first token $<$2s} via SSE.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ════════════════════════════════════════════════════════════════════════════
+\section{Live Demo}
+% ════════════════════════════════════════════════════════════════════════════
+
+\begin{frame}[t]{Live Demo}
+  \vspace{0.5cm}
+  \begin{center}
+    {\Large\bfseries\color{P1} edurag-495620.web.app}
+  \end{center}
+  \vspace{0.5cm}
+  \begin{columns}[t]
+    \begin{column}{0.30\textwidth}
+      \begin{block}{Upload}
+        {\small No page reload.\\
+        Firestore push —\\
+        status updates live.}
+      \end{block}
+    \end{column}
+    \begin{column}{0.30\textwidth}
+      \begin{block}{Chat}
+        {\small Token-by-token streaming\\
+        from Gemini.\\
+        Expandable citations.}
+      \end{block}
+    \end{column}
+    \begin{column}{0.30\textwidth}
+      \begin{block}{Sessions}
+        {\small Multiple named sessions.\\
+        Persists across\\
+        browser sessions.}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ════════════════════════════════════════════════════════════════════════════
+\section{Summary}
+% ════════════════════════════════════════════════════════════════════════════
+
+\begin{frame}[t,shrink=8]{Summary}
   \begin{columns}[t]
     \begin{column}{0.50\textwidth}
-      \begin{block}{Demo Flow}
-        \small
-        \begin{enumerate}
-          \setlength{\itemsep}{0.2em}
-          \item Register a new account (username + password)
-          \item Create a subject folder (e.g.\ \textit{Cloud Computing})
-          \item Upload a PDF textbook
-          \item Watch real-time status: Downloading $\to$ Ready
-          \item Select document and ask a question
-          \item Observe streaming answer with markdown
-          \item See source citations (filename + page)
-          \item Ask a follow-up — multi-turn context in action
-          \item Copy response; clear chat history
-          \item Delete a document — disappears from all 3 stores
-        \end{enumerate}
+      \begin{block}{Architecture}
+        {\small\begin{itemize}\setlength\itemsep{0.08em}
+          \item Async ingestion: GCS $\to$ Pub/Sub $\to$ Cloud Run
+          \item Inference: Vertex AI Gemini 2.5 Flash via SSE
+          \item Markdown, source citations, multi-user isolation
+          \item Full \textbf{Terraform IaC} — all infra as code
+        \end{itemize}}
+      \end{block}
+      \vspace{0.12cm}
+      \begin{block}{User Experience}
+        {\small\begin{itemize}\setlength\itemsep{0.08em}
+          \item Subject folders, search, filter, bulk select
+          \item Persistent multi-session chat (Firestore)
+          \item Smart filename routing in queries
+          \item Real-time status + atomic document deletion
+        \end{itemize}}
       \end{block}
     \end{column}
     \begin{column}{0.46\textwidth}
-      \begin{block}{Live URL}
-        \small
-        \texttt{edurag-495620.web.app}
+      \begin{block}{By the numbers}
+        {\footnotesize\renewcommand{\arraystretch}{1.2}
+        \begin{tabular}{@{}ll@{}}
+          GCP services   & 9 + Firebase \\
+          API endpoints  & 3 \\
+          Storage tiers  & 3 (GCS / Chroma / Firestore) \\
+          LLM            & Gemini 2.5 Flash \\
+          Vector dims    & 768 \\
+          Chunk size     & 1{,}000 chars \\
+          Max PDF        & 50 MB \\
+        \end{tabular}}
       \end{block}
-      \vspace{0.3cm}
-      \begin{block}{What to highlight}
-        \small
-        \begin{itemize}
-          \item No page reload — everything real-time
-          \item Token-by-token streaming from Gemini
-          \item Isolation: docs are per-user only
-        \end{itemize}
-      \end{block}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-% ═══════════════════════════════════════════════════════════════════════════
-\section{Summary}
-% ═══════════════════════════════════════════════════════════════════════════
-
-\begin{frame}{Summary}
-  \begin{columns}[t]
-    \begin{column}{0.56\textwidth}
-      \begin{block}{What we built}
-        \small
-        A production-ready, serverless RAG knowledge base on GCP:
-        \begin{itemize}
-          \setlength{\itemsep}{0.15em}
-          \item Decoupled async ingestion + real-time inference
-          \item Multi-user auth with full data isolation
-          \item Subject organisation + selective doc querying
-          \item Streaming AI responses with citations \& markdown
-          \item Multi-turn conversation history (last 3 turns)
-          \item Atomic document deletion across all 3 stores
-          \item Complete infrastructure as code with Terraform
-        \end{itemize}
-      \end{block}
-      \vspace{0.2cm}
+      \vspace{0.12cm}
       \begin{alertblock}{One IaaS component}
-        \small ChromaDB on Compute Engine VM — justified by cost vs.\ Vertex AI Vector Search.
+        {\small ChromaDB on Compute Engine VM\\
+        Vertex AI Vector Search too costly.}
       \end{alertblock}
     \end{column}
-    \begin{column}{0.40\textwidth}
-      \begin{block}{Requirements met}
-        \small
-        \renewcommand{\arraystretch}{1.2}
-        \begin{tabular}{@{}lc@{}}
-          UI (SPA)          & \checkmark \\
-          Storage (3 types) & \checkmark \\
-          Terraform IaC     & \checkmark \\
-          Large-scale plan  & \checkmark \\
-          PaaS/Serverless   & \checkmark* \\
-          Auth              & \checkmark \\
-          Real-time updates & \checkmark \\
-          Streaming (SSE)   & \checkmark \\
-          Document mgmt     & \checkmark \\
-        \end{tabular}\\[0.15cm]
-        \footnotesize *except ChromaDB VM
-      \end{block}
-    \end{column}
   \end{columns}
 \end{frame}
 
-% ─────────────────────────────────────────────────────────────────────────
+% ──────────────────────────────────────────────────────────────────────────
+{\setbeamercolor{background canvas}{bg=P1}
 \begin{frame}
+  \color{white}
+  \vspace{1.8cm}
   \begin{center}
-    \vspace{1cm}
-    {\Huge \textbf{Q\,\&\,A}}\\[0.8cm]
-    {\large Thank you!}\\[0.6cm]
-    \normalsize
-    Anna Ostrowska \quad $\cdot$ \quad Micha\l{} Kukla \quad $\cdot$ \quad Norbert Frydrysiak
+    {\Huge\bfseries Q\,\&\,A}\\[0.65cm]
+    {\large Thank you!}\\[0.5cm]
+    {\normalsize
+      Anna Ostrowska
+      \quad\textbullet\quad
+      Micha\l{} Kukla
+      \quad\textbullet\quad
+      Norbert Frydrysiak}\\[0.25cm]
+    {\footnotesize\color{white!65}\texttt{edurag-495620.web.app}}
   \end{center}
-\end{frame}
+\end{frame}}
 
 \end{document}
